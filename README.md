@@ -24,6 +24,7 @@ main.py                      CLI entry point (python -m orion also works)
 │   ├── themes.py            shared color palettes + saved UI prefs
 │   └── voice.py             local STT (faster-whisper) + TTS (piper/Kokoro/XTTS)
 ├── jarvis_hud.py            standalone futuristic HUD (tkinter)
+├── tools/voice_pipeline.py  streaming voice-cloning tool (F5-TTS)
 └── tests/                   pytest suite for the core modules
 ```
 
@@ -35,6 +36,27 @@ desktop UIs share one dispatch implementation (`orion.agent`) so the safety/
 confirmation flow is identical everywhere.
 
 ## Quickstart
+
+### One-command install
+
+```bash
+./install.sh                # everything (CLI + cloud API + voice + pipeline)
+```
+
+The installer creates a `.venv`, installs Open Orion, and copies `.env.example`
+to `.env`. Prefer smaller variants to keep the install light:
+
+```bash
+./install.sh --core          # CLI core only (no cloud API, no voice)
+./install.sh --api           # + cloud API backends (LiteLLM)
+./install.sh --voice         # + local STT/TTS
+./install.sh --voice-pipeline  # + streaming voice-cloning tool (F5-TTS)
+```
+
+The GUI/HUD need tkinter (a system package): `sudo pacman -S tk` on Arch, or
+`sudo apt install python3-tk` on Debian/Ubuntu.
+
+### Manual install
 
 ```bash
 # 1. Local model (recommended)
@@ -62,7 +84,7 @@ The project ships a `pyproject.toml` with console entry points, so you can
 install it properly instead of running from the repo:
 
 ```bash
-pip install -e ".[all]"        # everything; or [voice], [api]
+pip install -e ".[all]"        # everything; or [voice], [api], [voice-pipeline]
 orion                          # CLI REPL
 orion-gui                      # JARVIS-style deck
 orion-hud                      # futuristic HUD
@@ -251,3 +273,15 @@ Config knobs: `ORION_VOICE_ENABLED`, `ORION_STT_MODEL`, `ORION_STT_DEVICE`,
 - Commands run via `bash -c` as your current user — the agent inherits your permissions.
 - Inspect system state with read-only commands (`ps`, `df`, `journalctl`, `ls`, …); the
   model prefers these unless a mutation is required.
+
+## Streaming voice-cloning pipeline
+
+`tools/voice_pipeline.py` is a self-contained, low-latency streaming TTS tool
+(F5-TTS, sentence-by-sentence playback) with zero-shot voice cloning from a
+reference clip. Streams the LLM directly — it runs outside the agent loop and
+has no safety guard:
+
+```bash
+python tools/voice_pipeline.py "tell me about yourself"
+python tools/voice_pipeline.py --interactive
+```
