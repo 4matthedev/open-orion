@@ -194,10 +194,18 @@ class Voice:
         return sources
 
     def probe(self, name: str, seconds: float = 1.2) -> float:
-        """Record ``seconds`` from a source and return its average signal RMS."""
+        """Record ``seconds`` from a source and return its average signal RMS.
+
+        A suspended PipeWire/PulseAudio source wakes up silently, so the
+        first ~250ms are discarded to avoid underestimating the signal.
+        """
         proc = self._open_recorder(name)
         total, count = 0.0, 0
         try:
+            warm_deadline = time.monotonic() + 0.25
+            while time.monotonic() < warm_deadline:
+                if not proc.stdout.read(3200):
+                    break
             deadline = time.monotonic() + seconds
             while time.monotonic() < deadline:
                 frame = proc.stdout.read(3200)
@@ -499,27 +507,51 @@ class Voice:
                 wav.unlink(missing_ok=True)
 
     def _record_until_silence(self, timeout: int) -> list[bytes]:
-        """Stream 100ms PCM frames; capture from voice onset to trailing silence."""
+        """Stream 100ms PCM frames; capture from voice onset to trailing silence.
+
+        The VAD threshold is derived from an adaptive noise floor instead of
+        a fixed high bar: we warm the source up (a suspended input starts
+        silent), take the median of the next frames as the resting level,
+        and only treat frames that clearly exceed it as speech. Quiet mics
+        (e.g. a low-output wired/wireless boom headset) therefore trigger
+        while background noise still does not.
+        """
         proc = self._open_recorder(self.mic)
         frame_size = 3200  # 100ms @ 16kHz mono 16-bit
         captured: list[bytes] = []
-        lead: list[bytes] = []  # rolling 1s of pre-voice audio so speech onset isn't clipped
+        lead: list[bytes] = []  # rolling buffer of pre-voice audio so onset isn't clipped
         started = False
         speech_hits = 0
         silence_frames = 0
-        total_frames = 0
+        total = 0
         max_frames = timeout * 10
-        noise_floor: float | None = None
+        absolute_floor = self.settings.stt_vad_floor
         try:
+            # Discard the silent wake-up frames of a SUSPENDED source.
+            for _ in range(3):
+                if not proc.stdout.read(frame_size):
+                    return captured
+            # Establish the resting noise level from the next frames.
+            baseline: list[float] = []
+            for _ in range(5):
+                frame = proc.stdout.read(frame_size)
+                if not frame:
+                    break
+                baseline.append(_rms(frame, block_dc=True))
+                lead.append(frame)
+                total += 1
+            if not baseline:
+                baseline = [absolute_floor]
+            noise_floor = sorted(baseline)[len(baseline) // 2]
+            floor = max(noise_floor * 2.5, absolute_floor)
+
             while True:
                 frame = proc.stdout.read(frame_size)
                 if not frame:
                     break
-                total_frames += 1
+                total += 1
                 rms = _rms(frame, block_dc=True)
-                if noise_floor is None:
-                    noise_floor = rms if rms > 0 else 40.0
-                voiced = rms > max(noise_floor * 2.5, 40.0)
+                voiced = rms > floor
 
                 if not started:
                     lead.append(frame)
@@ -530,10 +562,11 @@ class Voice:
                         if speech_hits >= 2:
                             started = True
                             captured.extend(lead)
-                            captured.append(frame)
+                            lead.clear()
                     else:
                         speech_hits = 0
                         noise_floor = noise_floor * 0.9 + rms * 0.1
+                        floor = max(noise_floor * 2.5, absolute_floor)
                 else:
                     captured.append(frame)
                     if voiced:
@@ -541,10 +574,12 @@ class Voice:
                     else:
                         silence_frames += 1
                         noise_floor = noise_floor * 0.9 + rms * 0.1
+                        floor = max(noise_floor * 2.5, absolute_floor)
                     if silence_frames >= 12 or len(captured) >= max_frames:
                         break
 
-                if total_frames >= max_frames + 10:
+                if (not started and total > max_frames) or \
+                        (started and len(captured) >= max_frames):
                     break
         finally:
             proc.kill()

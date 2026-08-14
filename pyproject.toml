@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open-orion"
-version = "2.6.2"
+version = "2.7.4"
 description = "Autonomous terminal-based AI agent (JARVIS-style) for Linux — natural language to safe Bash."
 readme = "README.md"
 requires-python = ">=3.11"

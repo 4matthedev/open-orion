@@ -73,6 +73,10 @@ class AppSettings(BaseSettings):
     voice_enabled: bool = False
     stt_model: str = "small.en"
     stt_device: str = "default"
+    # Minimum absolute RMS threshold (int16 sample amplitude) before a frame
+    # counts as speech. Lower it for quiet mics, raise it if the environment
+    # is noisy. The real threshold is max(noise_floor * 2.5, this value).
+    stt_vad_floor: float = 10.0
     tts_model: str = ""
     tts_engine: Literal["piper", "kokoro", "xtts"] = "piper"
     tts_reference: str = ""
