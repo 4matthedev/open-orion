@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "open-orion"
+version = "10.7.9"
+description = "Autonomous terminal-based AI agent (JARVIS-style) for Linux — natural language to safe Bash."
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["agent", "ai", "llm", "ollama", "cli", "assistant", "shell"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "httpx>=0.27,<1",
+    "rich>=13.7,<14",
+]
+
+[project.optional-dependencies]
+# Cloud API backends (OpenAI / Anthropic via LiteLLM).
+api = [
+    "litellm>=1.40",
+]
+# Local voice: speech-to-text (faster-whisper) + TTS (piper / Kokoro / XTTS).
+voice = [
+    "faster-whisper>=1.0",
+    "kokoro-onnx>=0.4",
+    "espeakng-loader>=0.2",
+    "piper-tts>=1.3",
+    "coqui-tts>=0.24",
+]
+# Standalone streaming voice-cloning pipeline (tools/voice_pipeline.py).
+voice-pipeline = [
+    "f5-tts>=1.1",
+    "transformers>=4.57,<5",
+]
+# Everything above (mirrors requirements.txt).
+all = [
+    "litellm>=1.40",
+    "faster-whisper>=1.0",
+    "kokoro-onnx>=0.4",
+    "espeakng-loader>=0.2",
+    "piper-tts>=1.3",
+    "coqui-tts>=0.24",
+    "f5-tts>=1.1",
+    "transformers>=4.57,<5",
+]
+
+[project.scripts]
+orion = "orion.cli:main"
+orion-gui = "orion.gui:main"
+orion-hud = "jarvis_hud:main"
+
+[tool.setuptools]
+packages = ["orion"]
+py-modules = ["main", "jarvis_hud"]
+
+[tool.setuptools.package-data]
+orion = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"

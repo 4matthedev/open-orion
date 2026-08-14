@@ -1,0 +1,34 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ---- Virtual environments ----
+.venv/
+.venv-gui/
+.venv-rvc/
+venv/
+
+# ---- Environment / secrets ----
+.env
+.env.local
+
+# ---- Media & voice assets ----
+orion_raw.mp3
+orion_sample.wav
+tools/*.wav
+
+# ---- Local app data (screenshots, ui.json, memory) ----
+.local/
+
+# ---- Test & lint caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---- OS ----
+.DS_Store
