@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open-orion"
-version = "10.7.9"
+version = "1.7.8"
 description = "Autonomous terminal-based AI agent (JARVIS-style) for Linux — natural language to safe Bash."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,11 +39,6 @@ voice = [
     "piper-tts>=1.3",
     "coqui-tts>=0.24",
 ]
-# Standalone streaming voice-cloning pipeline (tools/voice_pipeline.py).
-voice-pipeline = [
-    "f5-tts>=1.1",
-    "transformers>=4.57,<5",
-]
 # Everything above (mirrors requirements.txt).
 all = [
     "litellm>=1.40",
@@ -52,8 +47,6 @@ all = [
     "espeakng-loader>=0.2",
     "piper-tts>=1.3",
     "coqui-tts>=0.24",
-    "f5-tts>=1.1",
-    "transformers>=4.57,<5",
 ]
 
 [project.scripts]

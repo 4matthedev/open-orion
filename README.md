@@ -24,7 +24,6 @@ main.py                      CLI entry point (python -m orion also works)
 │   ├── themes.py            shared color palettes + saved UI prefs
 │   └── voice.py             local STT (faster-whisper) + TTS (piper/Kokoro/XTTS)
 ├── jarvis_hud.py            standalone futuristic HUD (tkinter)
-├── tools/voice_pipeline.py  legacy streaming voice-cloning tool (F5-TTS)
 └── tests/                   pytest suite for the core modules
 ```
 
@@ -63,7 +62,7 @@ The project ships a `pyproject.toml` with console entry points, so you can
 install it properly instead of running from the repo:
 
 ```bash
-pip install -e ".[all]"        # everything; or [voice], [api], [voice-pipeline]
+pip install -e ".[all]"        # everything; or [voice], [api]
 orion                          # CLI REPL
 orion-gui                      # JARVIS-style deck
 orion-hud                      # futuristic HUD
@@ -252,14 +251,3 @@ Config knobs: `ORION_VOICE_ENABLED`, `ORION_STT_MODEL`, `ORION_STT_DEVICE`,
 - Commands run via `bash -c` as your current user — the agent inherits your permissions.
 - Inspect system state with read-only commands (`ps`, `df`, `journalctl`, `ls`, …); the
   model prefers these unless a mutation is required.
-
-## Standalone tools
-
-`tools/voice_pipeline.py` is a legacy, self-contained streaming voice-cloning
-tool (F5-TTS, sentence-by-sentence playback). It is **not** part of the agent
-loop — it speaks directly to Ollama and has no safety guard:
-
-```bash
-python tools/voice_pipeline.py "tell me about yourself"
-python tools/voice_pipeline.py --interactive
-```

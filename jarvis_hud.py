@@ -727,7 +727,7 @@ class HUD(tk.Tk):
             img = tk.PhotoImage(file=path)
         except tk.TclError:
             return
-        w, h = img.width(), img.height()
+        w = img.width()
         if w > 280 and w > 0:
             factor = max(1, int((w + 279) // 280))
             img = img.subsample(factor, factor)

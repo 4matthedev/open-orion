@@ -118,13 +118,11 @@ class Orb(tk.Canvas):
             depth = 0.35 + 0.65 * abs(time.time() % 0.9 / 0.9 - 0.5) * 2
             speed = 1.6 if int(time.time() * 2) % 2 else 1.0
             r = self._r * (0.9 + 0.1 * speed)
-            hue = "#3fd9ff"
             color = _fade(CYAN, "#ffffff", 0.2 + 0.8 * depth)
         else:
             depth = 0.5 + 0.5 * (0.5 + 0.5 * _sin(self._phase))
             r = self._r * 0.85
             color = _fade(BG_EDGE, CYAN, depth)
-            hue = CYAN_DIM
         halo = self._size // 2
         self.create_oval(halo - r, halo - r, halo + r, halo + r,
                          fill=color, outline="")

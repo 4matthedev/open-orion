@@ -213,18 +213,6 @@ class Agent:
                     "user",
                     "[tool result] vision analysis (%s):\n%s" % (model, text[:1200]))
 
-    def look(self, region: str | None = None) -> None:
-        """Convenience: capture the screen and describe it (used by /look)."""
-        path = self.executor.screenshot(region)
-        if path.startswith("error"):
-            if self.host:
-                self.host.log("err", path)
-            return
-        if self.host:
-            self.host.show_screenshot(path)
-        self.context.add("user", "[tool result] screenshot saved to %s" % path)
-        self.look_at(path)
-
     def _run(self, action: ActionRequest) -> None:
         host = self.host
         command = sanitize_command(
