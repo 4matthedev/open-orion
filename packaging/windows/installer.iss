@@ -19,7 +19,6 @@
 #define AppName "Open Orion"
 #define AppPublisher "4matthedev"
 #define AppURL "https://github.com/4matthedev/open-orion"
-#define AppVerName "Open Orion {#AppVersion}"
 #define ModelName "qwen3.5:4b"
 #define OllamaUrl "https://ollama.com/download/OllamaSetup.exe"
 
@@ -27,7 +26,6 @@
 AppId={{E6F4B08A-7C3D-4A1E-9B5F-5D0A4C7E13A2}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppVerName={#AppVerName}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
