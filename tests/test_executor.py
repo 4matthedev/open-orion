@@ -1,7 +1,7 @@
 """Unit tests for the sandboxed execution layer (shell + file tools)."""
 
-from orion.config import AppSettings
-from orion.executor import Executor
+from orion.core.config import AppSettings
+from orion.core.executor import Executor
 
 
 def _executor(**overrides) -> Executor:

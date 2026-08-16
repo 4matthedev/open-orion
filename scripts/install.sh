@@ -16,7 +16,8 @@
 
 set -u
 
-cd "$(dirname "$0")"
+# This script lives in scripts/; every path is relative to the repo root.
+cd "$(dirname "$0")/.."
 
 VENV=".venv"
 VARIANT="all"
@@ -102,9 +103,9 @@ echo
 echo "✓ Open Orion installed in $VENV"
 echo
 echo "Next steps:"
-echo "  1. Start a local model:     ollama serve && ollama pull qwen3.5:9b"
+echo "  1. Start a local model:     ollama serve && ollama pull qwen3.5:4b"
 echo "  2. Run the CLI:             $VENV/bin/python main.py"
-echo "  3. Run the GUI/HUD:         $VENV/bin/python main.py --gui"
-echo "                              $VENV/bin/python jarvis_hud.py"
+echo "  3. Run the HUD:             $VENV/bin/python main.py --gui"
+echo "                              (or $VENV/bin/python -m orion.ui.jarvis_hud)"
 echo "     (tkinter is a system package — see the top of install.sh)"
 echo "  4. Voice-cloning pipeline:  $VENV/bin/python tools/voice_pipeline.py --interactive"

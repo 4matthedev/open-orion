@@ -11,15 +11,15 @@ from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.syntax import Syntax
 
-from . import __version__
-from .agent import Agent
-from .config import AppSettings, get_settings
-from .executor import ExecResult, Executor
-from .llm import LLMError, get_provider
-from .memory import Memory
-from .models import ActionRequest
-from .platform import shell_name
-from .voice import Voice, VoiceError
+from .. import __version__
+from ..core.agent import Agent
+from ..core.config import AppSettings, get_settings
+from ..core.executor import ExecResult, Executor
+from ..core.memory import Memory
+from ..providers.llm import LLMError, get_provider
+from ..providers.platform import shell_name
+from ..providers.voice import Voice, VoiceError
+from ..utils.models import ActionRequest
 
 HELP_TEXT = """\
 Commands:

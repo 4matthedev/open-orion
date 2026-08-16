@@ -1,6 +1,6 @@
 """Unit tests for the shared system-telemetry helpers."""
 
-from orion.system import (
+from orion.core.system import (
     read_float,
     read_int,
     sys_battery,

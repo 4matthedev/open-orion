@@ -58,15 +58,40 @@ jobs:
           pip install pyinstaller
           pip install .[api]
 
+      - name: Generate Windows version resources
+        shell: pwsh
+        run: |
+          python packaging\windows\gen_version_info.py orion ${{ needs.version.outputs.version }}
+          python packaging\windows\gen_version_info.py orion-hud ${{ needs.version.outputs.version }}
+
       - name: Build executables
         run: |
-          pyinstaller --noconfirm --onefile --name orion --collect-all litellm --collect-all openai --collect-all tiktoken main.py
-          pyinstaller --noconfirm --onefile --name orion-hud --collect-all litellm --collect-all openai --collect-all tiktoken jarvis_hud.py
+          pyinstaller --noconfirm --noupx --onefile --name orion --icon packaging\windows\open-orion.ico --version-file orion_version.txt --collect-all litellm --collect-all openai --collect-all tiktoken main.py
+          pyinstaller --noconfirm --noupx --onefile --name orion-hud --icon packaging\windows\open-orion.ico --version-file orion-hud_version.txt --collect-all litellm --collect-all openai --collect-all tiktoken orion/ui/jarvis_hud.py
 
       - name: Smoke test executables
         run: |
           .\dist\orion.exe --version
           .\dist\orion-hud.exe --help
+
+      - name: Authenticode-sign executables (when a cert is configured)
+        shell: pwsh
+        if: ${{ env.WINDOWS_CERT_PFX != '' }}
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cert = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          $bytes = [Convert]::FromBase64String($env:WINDOWS_CERT_PFX)
+          [IO.File]::WriteAllBytes($cert, $bytes)
+          $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          $tool = Join-Path $sdk.FullName 'x64\signtool.exe'
+          if (-not (Test-Path $tool)) { Write-Host 'signtool not found; skipping signing'; exit 0 }
+          foreach ($exe in @('dist\orion.exe','dist\orion-hud.exe')) {
+            & $tool sign /f $cert /p $env:WINDOWS_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 /v $exe
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -81,6 +106,21 @@ jobs:
           $src = "dist-installer\OpenOrion-Setup-$ver.exe"
           Copy-Item $src "dist\${artifact}-windows-x86_64-setup.exe" -Force
           Get-ChildItem dist
+
+      - name: Authenticode-sign installer (when a cert is configured)
+        shell: pwsh
+        if: ${{ env.WINDOWS_CERT_PFX != '' }}
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cert = Join-Path $env:RUNNER_TEMP 'signing.pfx'
+          $sdk = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          $tool = Join-Path $sdk.FullName 'x64\signtool.exe'
+          if (-not (Test-Path $tool)) { Write-Host 'signtool not found; skipping signing'; exit 0 }
+          & $tool sign /f $cert /p $env:WINDOWS_CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 /v ("dist\${{ needs.version.outputs.artifact }}-windows-x86_64-setup.exe")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload Windows build artifacts
         uses: actions/upload-artifact@v4
@@ -116,8 +156,8 @@ jobs:
 
       - name: Build executables
         run: |
-          pyinstaller --noconfirm --onefile --name orion --collect-all litellm --collect-all openai --collect-all tiktoken main.py
-          pyinstaller --noconfirm --onefile --name orion-hud --collect-all litellm --collect-all openai --collect-all tiktoken jarvis_hud.py
+          pyinstaller --noconfirm --noupx --onefile --name orion --collect-all litellm --collect-all openai --collect-all tiktoken main.py
+          pyinstaller --noconfirm --noupx --onefile --name orion-hud --collect-all litellm --collect-all openai --collect-all tiktoken orion/ui/jarvis_hud.py
 
       - name: Smoke test executables
         run: |
@@ -145,9 +185,10 @@ jobs:
         run: |
           set -euo pipefail
           VER="${{ needs.version.outputs.version }}"
-          mkdir -p dist/pkg
+          mkdir -p dist/pkg/packaging_extra
           cp dist/orion dist/orion-hud dist/pkg/
           cp packaging/linux/bundle/install.sh dist/pkg/install.sh
+          cp packaging/linux/bundle/packaging_extra/* dist/pkg/packaging_extra/
           chmod +x dist/pkg/install.sh
           tar -C dist/pkg -czf "dist/${{ needs.version.outputs.artifact }}-linux-x86_64.tar.gz" .
 
@@ -174,20 +215,31 @@ jobs:
       - name: Stage files for release
         run: |
           mkdir -p deploy
-          cp artifacts/windows-build/* deploy/ || true
-          cp artifacts/linux-build/* deploy/ || true
+          cp artifacts/windows-build/*setup*.exe deploy/ || true
+          cp artifacts/linux-build/*.deb deploy/ || true
+          cp artifacts/linux-build/*.tar.gz deploy/ || true
           ls -la deploy/
 
-      - name: Attach binaries to release
+      - name: Attach installers to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.release_tag }}
           files: deploy/*
-          name: Open Orion ${{ needs.version.outputs.release_tag }} — binaries
+          name: Open Orion ${{ needs.version.outputs.release_tag }}
           body: |
-            Pre-built binaries and installers, built from commit `${{ github.sha }}`.
+            Open Orion ${{ needs.version.outputs.release_tag }} — installers only.
 
-            - **Windows:** `orion.exe` + `orion-hud.exe` (standalone, double-click to run) and `*-windows-x86_64-setup.exe` (Inno Setup installer, Start-Menu shortcuts).
-            - **Linux:** `orion` + `orion-hud` binaries, an amd64 `.deb` package, and a `*-linux-x86_64.tar.gz` bundle with `install.sh`.
+            ### Windows
+            - `*-windows-x86_64-setup.exe` — Inno Setup installer. Start-menu &
+              desktop shortcuts, embeds the app icon, and (optional task) installs
+              **Ollama** and pulls the default **qwen3.5:4b** model so the first
+              launch just works.
 
-            Voice/talk mode stays Linux-only; the binaries run against a local Ollama server or a cloud API key in `.env`.
+            ### Linux
+            - `open-orion_*_amd64.deb` — Debian/Ubuntu package.
+            - `*-linux-x86_64.tar.gz` — portable bundle with `install.sh`; installs
+              the app, adds a menu entry, and bootstraps Ollama + qwen3.5:4b
+              (same optional model pull as the Windows installer).
+
+            Voice/talk mode stays Linux-only. Point the app at a local Ollama
+            server or a cloud API key in `.env` as usual.

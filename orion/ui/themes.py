@@ -1,10 +1,9 @@
-"""Color themes for the Orion desktop UIs.
+"""Color themes for the Orion HUD.
 
-Both the tkinter GUI (``orion.gui``) and the standalone HUD (``jarvis_hud.py``)
-pull their palettes from a shared :class:`Theme`. Pick a palette with
-``--theme <name>`` on the command line, the ``ORION_THEME`` environment
-variable, or ``ORION_THEME`` in ``.env``. You can also point either at a
-custom JSON file that describes your own palette (any keys you omit fall
+The HUD (``jarvis_hud.py``) pulls its palette from a shared :class:`Theme`.
+Pick a palette with ``--theme <name>`` on the command line, the ``ORION_THEME``
+environment variable, or ``ORION_THEME`` in ``.env``. You can also point it at
+a custom JSON file that describes your own palette (any keys you omit fall
 back to the "jarvis" palette).
 """
 
@@ -15,7 +14,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .platform import data_dir
+from ..providers.platform import data_dir
 
 #: Every color role the UIs understand. Custom themes may override any subset.
 THEME_ROLES = (
@@ -25,7 +24,7 @@ THEME_ROLES = (
 )
 
 THEMES: dict[str, dict[str, str]] = {
-    # Iron-Man / JARVIS cyan deck (default for orion.gui)
+    # Iron-Man / JARVIS cyan deck (default base palette)
     "jarvis": {
         "bg": "#04060c", "bg_panel": "#0a101d", "bg_deep": "#030109",
         "bg_edge": "#122238", "grid": "#122238",
@@ -178,8 +177,8 @@ def _load_custom_theme(path: Path) -> Theme:
 
 
 # ---------------------------------------------------------------------------
-# Persisted UI preferences (so a palette picked in the settings menu survives
-# across launches).
+# Persisted UI preferences (so the palette picked at launch survives across
+# launches).
 # ---------------------------------------------------------------------------
 
 def _ui_state_path() -> Path:
@@ -187,7 +186,7 @@ def _ui_state_path() -> Path:
 
 
 def read_saved_theme() -> str:
-    """Last palette picked in the GUI settings menu ("" if none)."""
+    """Last palette picked in the HUD ("" if none)."""
     try:
         data = json.loads(_ui_state_path().read_text(encoding="utf-8"))
         name = data.get("theme")

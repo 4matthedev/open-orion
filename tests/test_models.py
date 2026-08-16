@@ -3,7 +3,7 @@
 import pydantic
 import pytest
 
-from orion.models import ActionRequest, parse_action
+from orion.utils.models import ActionRequest, parse_action
 
 
 def test_parse_bare_json():

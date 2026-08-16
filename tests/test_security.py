@@ -1,7 +1,7 @@
 """Unit tests for the command risk classifier and confirmation policy."""
 
-from orion.config import AppSettings
-from orion.security import classify_command, needs_confirmation, sanitize_command
+from orion.core.config import AppSettings
+from orion.utils.security import classify_command, needs_confirmation, sanitize_command
 
 
 def test_sanitize_strips_nul_and_whitespace():

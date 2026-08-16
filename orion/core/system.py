@@ -1,10 +1,10 @@
-"""Read-only system telemetry for the desktop UIs.
+"""Read-only system telemetry for the desktop HUD.
 
 Every value is real, read live from the machine — on Linux from ``/proc``,
 sysfs, or the stdlib; on Windows from ``psutil`` (or ctypes/PowerShell when
-psutil is unavailable) — nothing is faked. The HUD (``jarvis_hud.py``) and any
-future widget pull their readouts from here so the sampling code is shared and
-unit-testable.
+psutil is unavailable) — nothing is faked. The HUD (``orion.ui.jarvis_hud``)
+and any future widget pull their readouts from here so the sampling code is
+shared and unit-testable.
 
 All functions are safe to call from any thread; they never mutate state and
 never raise (they return ``0`` / ``None`` defaults on failure).
@@ -17,7 +17,7 @@ import socket
 import time
 from pathlib import Path
 
-from .platform import is_windows
+from ..providers.platform import is_windows
 
 
 def _win_uptime() -> float:

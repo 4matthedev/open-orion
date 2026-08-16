@@ -27,7 +27,8 @@ if ($Help) {
     exit 0
 }
 
-Set-Location $PSScriptRoot
+# This script lives in scripts/; every path is relative to the repo root.
+Set-Location (Join-Path $PSScriptRoot "..")
 
 # Pick the variant to install.
 $variant = "all"
@@ -37,22 +38,30 @@ elseif ($Voice) { $variant = "voice" }
 elseif ($VoicePipeline) { $variant = "voice-pipeline" }
 
 # --- find a Python 3.11+ ---------------------------------------------
+# Probe candidate interpreters with Get-Command first: under
+# $ErrorActionPreference = "Stop" an unguarded `&` against a missing
+# executable raises CommandNotFoundException and kills the whole script.
 $py = $null
-foreach ($candidate in @("python3.13", "python3.12", "python3.11", "python", "py")) {
-    $cmd = $candidate
-    if ($candidate -eq "py") {
-        # py launcher: pick the latest 3.x
-        $probe = & py -3.12 -c "import sys; print(sys.version_info[0]*10 + sys.version_info[1])" 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            $py = @("py", "-3.12")
+foreach ($candidate in @("python3.13", "python3.12", "python3.11", "python")) {
+    if (-not (Get-Command $candidate -ErrorAction SilentlyContinue)) { continue }
+    try {
+        $probe = & $candidate -c "import sys; print(sys.version_info[0]*10 + sys.version_info[1])" 2>$null
+    } catch { continue }
+    if ($LASTEXITCODE -eq 0 -and [int]$probe -ge 311) {
+        $py = $candidate
+        break
+    }
+}
+# Windows `py` launcher: accept any 3.11+ even when "python" is the Store stub.
+if (-not $py -and (Get-Command py -ErrorAction SilentlyContinue)) {
+    foreach ($ver in @("3.13", "3.12", "3.11")) {
+        try {
+            $probe = & py "-$ver" -c "import sys; print(sys.version_info[0]*10 + sys.version_info[1])" 2>$null
+        } catch { continue }
+        if ($LASTEXITCODE -eq 0 -and [int]$probe -ge 311) {
+            $py = @("py", "-$ver")
             break
         }
-        continue
-    }
-    $probe = & $cmd -c "import sys; print(sys.version_info[0]*10 + sys.version_info[1])" 2>$null
-    if ($LASTEXITCODE -eq 0 -and [int]$probe -ge 311) {
-        $py = $cmd
-        break
     }
 }
 if (-not $py) {
@@ -98,8 +107,8 @@ Write-Host ""
 Write-Host "Open Orion installed in $venv" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Start a local model:     ollama serve && ollama pull qwen3.5:9b"
+Write-Host "  1. Start a local model:     ollama serve && ollama pull qwen3.5:4b"
 Write-Host "  2. Run the CLI:             .\$venv\Scripts\python.exe main.py"
-Write-Host "  3. Run the GUI/HUD:         .\$venv\Scripts\python.exe main.py --gui"
-Write-Host "                              .\$venv\Scripts\python.exe jarvis_hud.py"
+Write-Host "  3. Run the HUD:             .\$venv\Scripts\python.exe main.py --gui"
+Write-Host "                              (or .\$venv\Scripts\python.exe -m orion.ui.jarvis_hud)"
 Write-Host "  4. Voice-cloning pipeline:  .\$venv\Scripts\python.exe tools\voice_pipeline.py --interactive"

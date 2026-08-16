@@ -3,7 +3,7 @@
 Runs generated shell commands in a subprocess with a hard timeout, captures and
 size-truncates stdout/stderr, and exposes safe structured file tools (read/list).
 Commands run through ``bash`` on Linux and ``powershell.exe`` on Windows.
-The security policy itself lives in ``orion.security``.
+The security policy itself lives in ``orion.utils.security``.
 """
 
 from __future__ import annotations
@@ -15,14 +15,14 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import AppSettings
-from .platform import (
+from ..providers.platform import (
     is_windows,
     screenshots_dir,
     shell_args,
     syntax_check_args,
 )
-from .security import sanitize_command
+from ..utils.security import sanitize_command
+from .config import AppSettings
 
 
 @dataclass

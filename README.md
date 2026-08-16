@@ -10,25 +10,33 @@ confirmation-based execution flow.
 ```
 main.py                      CLI entry point (python -m orion also works)
 ├── orion/
-│   ├── cli.py               REPL: dispatch, confirmation prompts, rendering
-│   ├── gui.py               JARVIS-style desktop UI (pure stdlib tkinter)
-│   ├── agent.py             shared control-loop + action dispatch (Host protocol)
-│   ├── config.py            pydantic-settings: providers, models, safety toggles
-│   ├── security.py          static risk classifier + hard-block/risky patterns
-│   ├── executor.py          sandboxed shell runner (bash / PowerShell) + file tools
-│   ├── llm.py               Ollama (local) and LiteLLM (OpenAI/Anthropic) providers
-│   ├── models.py            JSON action contract + parser
-│   ├── prompt.py            system prompt + environment fingerprint
-│   ├── context.py           bounded conversation history (ring buffer)
-│   ├── memory.py            persistent note store (survives restarts)
-│   ├── system.py            real telemetry shared by the desktop UIs
-│   ├── themes.py            shared color palettes + saved UI prefs
-│   ├── platform.py          cross-platform helpers (OS, data dirs, shell)
-│   └── voice.py             local STT (faster-whisper) + TTS (piper/Kokoro/XTTS)
-├── jarvis_hud.py            standalone futuristic HUD (tkinter)
-├── install.ps1              Windows installer
-├── tools/voice_pipeline.py  streaming voice-cloning tool (F5-TTS)
-└── tests/                   pytest suite for the core modules
+│   ├── cli/
+│   │   ├── cli.py               REPL: dispatch, confirmation prompts, rendering
+│   │   └── prompt.py            system prompt + environment fingerprint
+│   ├── core/
+│   │   ├── agent.py             shared control-loop + action dispatch (Host protocol)
+│   │   ├── config.py            pydantic-settings: providers, models, safety toggles
+│   │   ├── executor.py          sandboxed shell runner (bash / PowerShell) + file tools
+│   │   ├── context.py           bounded conversation history (ring buffer)
+│   │   ├── memory.py            persistent note store (survives restarts)
+│   │   └── system.py            real telemetry shared by the desktop HUD
+│   ├── providers/
+│   │   ├── llm.py               Ollama (local) and LiteLLM (OpenAI/Anthropic) providers
+│   │   ├── voice.py             local STT (faster-whisper) + TTS (piper/Kokoro/XTTS)
+│   │   └── platform.py          cross-platform helpers (OS, data dirs, shell)
+│   ├── utils/
+│   │   ├── security.py          static risk classifier + hard-block/risky patterns
+│   │   └── models.py            JSON action contract + parser
+│   └── ui/
+│       ├── jarvis_hud.py        futuristic HUD (tkinter)
+│       └── themes.py            shared color palettes + saved UI prefs
+├── scripts/
+│   ├── install.sh / install.ps1 Linux & Windows one-command installers
+│   ├── orion-hud.sh            Linux HUD launcher
+│   ├── orion.bat / orion-hud.bat  Windows CLI / HUD launchers
+├── assets/                      raw audio, samples, and voice-model files
+├── tools/voice_pipeline.py      streaming voice-cloning tool (F5-TTS)
+└── tests/                       pytest suite for the core modules
 ```
 
 The agent is a **control loop**: the LLM emits a single JSON action
@@ -36,8 +44,8 @@ The agent is a **control loop**: the LLM emits a single JSON action
 classifies the command, the user confirms risky actions, the command executes,
 and the output is fed back into context for the next step. On Linux commands
 run through `bash`; on Windows they run through `powershell.exe`, and the
-system prompt tells the model which shell it is talking to. The CLI and both
-desktop UIs share one dispatch implementation (`orion.agent`) so the safety/
+system prompt tells the model which shell it is talking to. The CLI and the
+HUD share one dispatch implementation (`orion.core.agent`) so the safety/
 confirmation flow is identical everywhere.
 
 ## Platforms
@@ -45,74 +53,72 @@ confirmation flow is identical everywhere.
 | Feature              | Linux | Windows |
 |----------------------|-------|---------|
 | CLI agent            | ✔     | ✔       |
-| GUI / HUD (tkinter)  | ✔     | ✔ (a Python with Tk, e.g. from python.org) |
+| HUD (tkinter)        | ✔     | ✔ (a Python with Tk, e.g. from python.org) |
 | System telemetry     | ✔ `/proc` | ✔ psutil / ctypes |
 | Screenshots          | ✔ grim / import | ✔ PowerShell System.Drawing |
 | Talk mode (voice)    | ✔ (PulseAudio/PipeWire) | — graceful, disables itself |
 
 ## Binaries & installers
 
-Pre-built executables and installers are attached to each [GitHub
-release](https://github.com/4matthedev/open-orion/releases), built
-automatically by CI (a tag push `v*` rebuilds and re-uploads them):
+Pre-built installers are attached to each [GitHub release](https://github.com/4matthedev/open-orion/releases), built automatically by CI (a tag push `v*` rebuilds and re-uploads them):
 
 | Asset                                                       | What it is                                        |
 |-------------------------------------------------------------|---------------------------------------------------|
-| `open-orion-<ver>-windows-x86_64-setup.exe`                 | **Windows installer** (Inno Setup) — Start-menu shortcuts, installs into Program Files |
-| `orion.exe`, `orion-hud.exe`                                | Standalone Windows executables (double-click to run; `orion.exe --gui` opens the deck) |
+| `open-orion-<ver>-windows-x86_64-setup.exe`                 | **Windows installer** (Inno Setup) — Start-menu + desktop shortcuts, custom app icon, and an optional task that installs **Ollama** and pulls the default **qwen3.5:4b** model so the first run just works |
 | `open-orion_<ver>_amd64.deb`                                | Debian/Ubuntu package (`sudo apt install ./open-orion_<ver>_amd64.deb`) |
-| `open-orion-<ver>-linux-x86_64.tar.gz`                      | Portable Linux bundle with `install.sh`           |
+| `open-orion-<ver>-linux-x86_64.tar.gz`                      | Portable Linux bundle with `install.sh` — installs the app, adds a menu entry w/ icon, and bootstraps **Ollama** + pulls **qwen3.5:4b** (same model handling as the Windows installer) |
 
-The binaries are **single-file** (PyInstaller) and bundle the LLM clients
-(Ollama + LiteLLM). Point them at a local Ollama server or a cloud API key via
-`.env`, exactly like the source install.
+The Windows executables embed the Open Orion icon and full version metadata
+(company/product/description), which keeps SmartScreen and Windows Defender
+heuristics happy; CI also Authenticode-signs the exe's and installer when a
+`WINDOWS_CERT_PFX` / `WINDOWS_CERT_PASSWORD` secret pair is configured.
 
 ## Quickstart
 
 ### One-command install
 
 ```bash
-./install.sh                # everything (CLI + cloud API + voice + pipeline)
+scripts/install.sh           # everything (CLI + cloud API + voice + pipeline)
 ```
 
 The installer creates a `.venv`, installs Open Orion, and copies `.env.example`
 to `.env`. Prefer smaller variants to keep the install light:
 
 ```bash
-./install.sh --core          # CLI core only (no cloud API, no voice)
-./install.sh --api           # + cloud API backends (LiteLLM)
-./install.sh --voice         # + local STT/TTS
-./install.sh --voice-pipeline  # + streaming voice-cloning tool (F5-TTS)
+scripts/install.sh --core          # CLI core only (no cloud API, no voice)
+scripts/install.sh --api           # + cloud API backends (LiteLLM)
+scripts/install.sh --voice         # + local STT/TTS
+scripts/install.sh --voice-pipeline  # + streaming voice-cloning tool (F5-TTS)
 ```
 
-The GUI/HUD need tkinter (a system package): `sudo pacman -S tk` on Arch, or
+The GUI/HUD needs tkinter (a system package): `sudo pacman -S tk` on Arch, or
 `sudo apt install python3-tk` on Debian/Ubuntu.
 
 ### Windows install (PowerShell)
 
 ```powershell
-.\install.ps1                # everything; or:
-.\install.ps1 -Core          # CLI core only
-.\install.ps1 -Api           # + cloud API backends
-.\install.ps1 -Voice         # + voice TTS/STT packages (talk mode still Linux-only)
-.\install.ps1 -VoicePipeline # + streaming voice-cloning tool
+.\scripts\install.ps1                # everything; or:
+.\scripts\install.ps1 -Core          # CLI core only
+.\scripts\install.ps1 -Api           # + cloud API backends
+.\scripts\install.ps1 -Voice         # + voice TTS/STT packages (talk mode still Linux-only)
+.\scripts\install.ps1 -VoicePipeline # + streaming voice-cloning tool
 
-.\orion.bat                  # CLI REPL
-.\orion-gui.bat              # JARVIS-style deck
-.\orion-hud.bat              # futuristic HUD
+.\scripts\orion.bat                  # CLI REPL
+.\scripts\orion-hud.bat              # futuristic HUD
 ```
 
 Use a Python build that bundles tkinter (the standard installer from
 python.org does). Generated commands run through PowerShell; point the broker at
 a local Ollama server or a cloud API exactly like on Linux. Windows data files
 (memory, theme prefs, screenshots) live under `%LOCALAPPDATA%\open-orion`.
+`main.py --gui` launches the HUD too (`scripts/orion.bat`/`scripts/orion-hud.bat` both work).
 
 ### Manual install
 
 ```bash
 # 1. Local model (recommended)
 ollama serve
-ollama pull qwen3.5:9b   # or llama3.1:8b
+ollama pull qwen3.5:4b   # or llama3.1:8b
 
 # 2. Install
 python3 -m venv .venv && source .venv/bin/activate
@@ -137,7 +143,6 @@ install it properly instead of running from the repo:
 ```bash
 pip install -e ".[all]"        # everything; or [voice], [api], [voice-pipeline]
 orion                          # CLI REPL
-orion-gui                      # JARVIS-style deck
 orion-hud                      # futuristic HUD
 ```
 
@@ -206,29 +211,29 @@ Voice is **button-activated** — the HUD never listens on its own. Click the
 when you go quiet (push to talk). Use `--no-voice` to disable the engine.
 
 ```bash
-./.venv-gui/bin/python jarvis_hud.py      # launch the HUD
-./.venv-gui/bin/python jarvis_hud.py --no-voice
-./.venv-gui/bin/python jarvis_hud.py --dry-run
+./scripts/orion-hud.sh                          # launch the HUD
+.venv/bin/python -m orion.ui.jarvis_hud --no-voice
+.venv/bin/python -m orion.ui.jarvis_hud --dry-run
 ```
 
 ### Themes
 
-Both GUIs share one palette system. Pick a palette with `--theme <name>`,
-the `ORION_THEME` env var, or `ORION_THEME=` in `.env` (CLI flag wins, then
-the env var, then `.env`). Built-in palettes:
+The HUD uses one palette system. Pick a palette with `--theme <name>`, the
+`ORION_THEME` env var, or `ORION_THEME=` in `.env` (CLI flag wins, then the env
+var, then `.env`). Built-in palettes:
 
 | Name        | Look                                   |
 |-------------|----------------------------------------|
-| `jarvis`    | Iron-Man cyan deck (GUI default)       |
-| `orion`     | Purple arc-reactor HUD (HUD default)   |
+| `orion`     | Purple arc-reactor HUD (default)       |
+| `jarvis`    | Iron-Man cyan deck                     |
 | `matrix`    | Green phosphor on black                |
 | `solarized` | Solarized dark                         |
 | `nord`      | Nord                                   |
 | `amber`     | Warm amber-on-black retro console      |
 
 ```bash
-./.venv-gui/bin/python jarvis_hud.py --theme matrix
-./.venv-gui/bin/python jarvis_hud.py --list-themes
+.venv/bin/python -m orion.ui.jarvis_hud --theme matrix
+.venv/bin/python -m orion.ui.jarvis_hud --list-themes
 ```
 
 **Custom themes:** point `--theme` (or `ORION_THEME`) at a JSON file. Any key
@@ -253,34 +258,25 @@ Available keys: `bg`, `bg_panel`, `bg_deep`, `bg_edge`, `grid`, `fg`,
 `accent`, `accent_dim`, `accent_faint`, `accent_2`, `text_dim`, `text_faint`,
 `ok`, `warn`, `error`, `command`, `muted`.
 
-### Settings menu (in the GUI)
+The palette picked at launch is saved for the next launch (stored in
+`~/.local/share/open-orion/ui.json` or `%LOCALAPPDATA%\open-orion\ui.json` on
+Windows).
 
-Hit the **⚙ SETTINGS** button in the deck's footer (or type `/settings`).
-The Control Deck panel lets you:
-
-- **PALETTE** — click any built-in theme to switch instantly; each button
-  is rendered in the palette it selects. The choice is saved for the next
-  launch (stored in `~/.local/share/open-orion/ui.json`).
-- **OPTIONS** — toggle `dry-run`, `vision`, and `talk` (voice mode) live.
-
-Switching palettes rebuilds the deck in-place and preserves your conversation
-transcript and command log. The standalone HUD (`jarvis_hud.py`) reads the
-same saved palette on launch.
-
-Every readout is real, read live from the machine — nothing is fake:
+Every readout is real, read live from the machine — nothing is fake (on
+Windows the sources swap to psutil/ctypes equivalents):
 
 | Readout            | Source                                              |
 |--------------------|-----------------------------------------------------|
 | SYSTEM STATUS      | `ACTIVE` once the LLM provider connects             |
-| CPU LOAD           | sampled from `/proc/stat`                           |
-| MEMORY             | `MemTotal` / `MemAvailable` from `/proc/meminfo`    |
+| CPU LOAD           | sampled from `/proc/stat` (Windows: GetSystemTimes) |
+| MEMORY             | `MemTotal` / `MemAvailable` from `/proc/meminfo` (Windows: GlobalMemoryStatusEx) |
 | POWER              | battery capacity from `/sys/class/power_supply`, else real CPU load |
-| UPTIME             | `/proc/uptime`                                      |
+| UPTIME             | `/proc/uptime` (Windows: GetTickCount64)            |
 | HOSTNAME          | `socket.gethostname()`                            |
 | CONNECTION        | `OLLAMA` or `API`, from the active provider         |
 | ENCRYPTION        | `LOCAL` for Ollama, `TLS-1.3` for cloud APIs        |
-| NET RATE          | RX/TX deltas from `/proc/net/dev`                   |
-| DISK /            | `shutil.disk_usage("/")`                            |
+| NET RATE          | RX/TX deltas from `/proc/net/dev` (Windows: psutil) |
+| DISK /            | `shutil.disk_usage("C:\\")` / `shutil.disk_usage("/")` |
 | AI CORE panel     | provider, model, kernel, safety, disk, context turns
 
 The HUD runs the **real Orion agent loop** — your typed or spoken input goes
@@ -289,16 +285,15 @@ the guarded execution, context history, slash commands and voice from the
 same modules the CLI uses. The center emblem switches to `THINKING` and
 pulses while the model works.
 
-> Note: Tk is a system package. If your venv Python lacks it, either
-> `sudo pacman -S tk` or use the bundled `./.venv-gui` (Python 3.12 with Tk).
-> The launcher picks a working interpreter automatically.
+> Note: Tk is a system package. If your venv Python lacks it, install it with
+> `sudo pacman -S tk` or `sudo apt install python3-tk` and recreate the venv.
 
 ## Talk mode (voice)
 
 > **Windows note:** talk mode is Linux-only for now. The voice engine needs
 > PulseAudio/PipeWire (`parec`, `paplay`, `pactl`); on Windows it detects the
-> platform and disables itself with a clear message — the CLI, GUI, and HUD
-> keep working normally.
+> platform and disables itself with a clear message — the CLI and HUD keep
+> working normally.
 
 Speak to Open Orion and have it speak back — fully local:
 

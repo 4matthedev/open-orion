@@ -7,8 +7,8 @@ GenericName=AI Assistant
 GenericName[tr]=Yapay Zeka Asistanı
 Comment=Futuristic HUD command deck
 Comment[tr]=Fütüristik HUD komut güvertesi
-Exec=/opt/open-orion/orion-hud
-Path=/opt/open-orion
+Exec=/usr/local/bin/orion-hud
+
 Icon=open-orion
 Terminal=false
 Categories=Utility;System;

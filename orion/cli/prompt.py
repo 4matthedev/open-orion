@@ -7,11 +7,11 @@ import getpass
 import os
 import platform
 
-from .config import AppSettings
-from .platform import is_windows, shell_name
+from ..core.config import AppSettings
+from ..providers.platform import is_windows, shell_name
 
 try:
-    from . import __version__
+    from .. import __version__
 except ImportError:  # pragma: no cover - imported standalone
     __version__ = "unknown"
 

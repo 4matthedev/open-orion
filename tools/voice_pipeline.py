@@ -7,7 +7,7 @@ LLM directly, so no JSON-action contract, safety guard, or confirmation flow
 is involved.
 
 Pipeline: LLM stream (local Ollama 9B) -> sentence splitting -> zero-shot
-voice synthesis (F5-TTS cloned from orion_raw.mp3) -> Orion DSP effect ->
+voice synthesis (F5-TTS cloned from assets/orion_raw.mp3) -> Orion DSP effect ->
 immediate playback.
 
 Plays each completed sentence as soon as it is synthesized, so audio starts
@@ -36,11 +36,11 @@ from pathlib import Path
 
 import httpx
 
-from orion.platform import is_windows, piper_voices_dir
+from orion.providers.platform import is_windows, piper_voices_dir
 
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3.5:9b"
-REF_AUDIO = Path(__file__).resolve().parents[1] / "orion_raw.mp3"
+REF_AUDIO = Path(__file__).resolve().parents[1] / "assets" / "orion_raw.mp3"
 
 # Spoken-style persona; keep it short so the 9B model stays on voice.
 PERSONA = """
@@ -372,7 +372,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--piper-model", default=None, type=Path)
     parser.add_argument("--nfe", type=int, default=16, help="F5 diffusion steps (lower=faster)")
     parser.add_argument("--device", default=None)
-    parser.add_argument("--ref-text", default="", help="transcription of orion_raw.mp3 (cached if empty)")
+    parser.add_argument("--ref-text", default="", help="transcription of assets/orion_raw.mp3 (cached if empty)")
     parser.add_argument("--no-play", action="store_true", help="synthesize + effect but don't play audio")
     parser.add_argument("--keep", action="store_true", help="keep generated .wav files (temp dir)")
     parser.add_argument("--out-dir", default=None, type=Path, help="save generated wavs to dir (implies --keep)")

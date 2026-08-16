@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from orion.config import AppSettings
+from orion.core.config import AppSettings
 
 
 def test_defaults():

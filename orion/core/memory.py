@@ -12,7 +12,7 @@ import threading
 from contextlib import suppress
 from pathlib import Path
 
-from .platform import data_dir
+from ..providers.platform import data_dir
 
 
 class Memory:

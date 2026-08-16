@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 
-from .config import AppSettings
+from ..core.config import AppSettings
 
 # Model-name markers that indicate an image-capable (multimodal) model.
 _VISION_MARKERS = (

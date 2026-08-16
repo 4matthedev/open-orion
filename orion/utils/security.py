@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from .config import AppSettings
+    from ..core.config import AppSettings
 
 Level = Literal["safe", "risky", "forbidden"]
 

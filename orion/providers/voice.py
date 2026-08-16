@@ -22,7 +22,7 @@ import time
 import wave
 from pathlib import Path
 
-from .config import AppSettings
+from ..core.config import AppSettings
 from .platform import is_windows, kokoro_dir, piper_voices_dir
 
 _TMP = Path(tempfile.gettempdir())

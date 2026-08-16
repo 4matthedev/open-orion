@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from orion.themes import (
+from orion.ui.themes import (
     Theme,
     ThemeError,
     load_theme,
@@ -58,13 +58,13 @@ def test_resolve_theme_precedence():
 
 
 def test_saved_theme_roundtrip(monkeypatch, tmp_path):
-    monkeypatch.setattr("orion.themes._ui_state_path", lambda: tmp_path / "ui.json")
+    monkeypatch.setattr("orion.ui.themes._ui_state_path", lambda: tmp_path / "ui.json")
     save_theme("matrix")
     assert read_saved_theme() == "matrix"
 
 
 def test_saved_theme_missing_file(monkeypatch, tmp_path):
-    monkeypatch.setattr("orion.themes._ui_state_path", lambda: tmp_path / "ui.json")
+    monkeypatch.setattr("orion.ui.themes._ui_state_path", lambda: tmp_path / "ui.json")
     assert read_saved_theme() == ""
 
 

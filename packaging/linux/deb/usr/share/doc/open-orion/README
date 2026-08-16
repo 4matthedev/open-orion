@@ -2,8 +2,8 @@ Open Orion — autonomous terminal-based AI agent.
 
 Commands:
   orion            CLI REPL (natural language -> safe shell commands)
-  orion --gui      JARVIS-style desktop deck
-  orion-hud        futuristic HUD
+  orion --gui      futuristic HUD (same as orion-hud)
+  orion-hud        futuristic HUD command deck
 
 Talk mode (voice) is Linux-only and needs pulseaudio/pipewire plus model files.
 

@@ -1,6 +1,6 @@
 """Unit tests for the bounded conversation-history ring buffer."""
 
-from orion.context import ContextHistory
+from orion.core.context import ContextHistory
 
 
 def test_messages_preserves_order():

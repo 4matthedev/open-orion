@@ -2,8 +2,8 @@
 
 import base64
 
-from orion.config import AppSettings
-from orion.llm import (
+from orion.core.config import AppSettings
+from orion.providers.llm import (
     _build_litellm_messages,
     _build_ollama_messages,
     _is_vision_model,

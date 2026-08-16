@@ -22,12 +22,11 @@ from tkinter import font as tkfont
 from tkinter import messagebox
 
 from orion import __version__
-from orion.agent import Agent
-from orion.config import get_settings
-from orion.executor import Executor
-from orion.llm import LLMError, get_provider
-from orion.memory import Memory
-from orion.system import (
+from orion.core.agent import Agent
+from orion.core.config import get_settings
+from orion.core.executor import Executor
+from orion.core.memory import Memory
+from orion.core.system import (
     sys_battery,
     sys_cpu_load,
     sys_cpu_temp,
@@ -37,14 +36,15 @@ from orion.system import (
     sys_net_rx_tx,
     sys_uptime,
 )
-from orion.themes import (
+from orion.providers.llm import LLMError, get_provider
+from orion.providers.voice import Voice, VoiceError
+from orion.ui.themes import (
     ThemeError,
     load_theme,
     read_saved_theme,
     resolve_theme_name,
     themes_list,
 )
-from orion.voice import Voice, VoiceError
 
 # ---------------------------------------------------------------------------
 # Theme — palette resolved at startup from --theme / ORION_THEME / .env
@@ -172,6 +172,7 @@ class HUD(tk.Tk):
         self.min_h = 540
 
     def _make_fonts(self) -> None:
+        self.f_mono_reg = tkfont.Font(family=self.f_mono)
         self.f_mono_b = tkfont.Font(family=self.f_mono, weight="bold")
         self.f_title = tkfont.Font(family=self.f_mono, weight="bold")
         self.f_sub = tkfont.Font(family=self.f_mono, weight="bold")
@@ -182,6 +183,7 @@ class HUD(tk.Tk):
 
     def _rescale_fonts(self) -> None:
         s = self.scale
+        self.f_mono_reg.configure(size=max(8, int(10 * s)))
         self.f_mono_b.configure(size=max(8, int(10 * s)))
         self.f_title.configure(size=max(16, int(30 * s)))
         self.f_sub.configure(size=max(8, int(10 * s)))
@@ -323,7 +325,7 @@ class HUD(tk.Tk):
                  fg=PURPLE, bg=BG_PANEL, anchor="w", padx=8,
                  pady=6).pack(fill="x")
         self.chat = tk.Text(self.chat_panel, bg=BG_PANEL, fg=TEXT_DIM,
-                            font=self.f_mono, wrap="word", bd=0, padx=10,
+                            font=self.f_mono_reg, wrap="word", bd=0, padx=10,
                             pady=8, highlightthickness=0, insertbackground=PURPLE,
                             width=40, height=24, state="disabled", cursor="arrow")
         self.chat.pack(side="left", fill="both", expand=True)
@@ -336,10 +338,10 @@ class HUD(tk.Tk):
                                 font=self.f_mono_b, spacing1=6, spacing3=6)
         self.chat.tag_configure("orion", foreground=PURPLE,
                                 font=self.f_mono_b, spacing1=6, spacing3=6)
-        self.chat.tag_configure("body", foreground=TEXT_DIM, font=self.f_mono)
-        self.chat.tag_configure("sys", foreground=TEXT_FAINT, font=self.f_mono)
-        self.chat.tag_configure("ok", foreground=OK, font=self.f_mono)
-        self.chat.tag_configure("err", foreground=ERR, font=self.f_mono)
+        self.chat.tag_configure("body", foreground=TEXT_DIM, font=self.f_mono_reg)
+        self.chat.tag_configure("sys", foreground=TEXT_FAINT, font=self.f_mono_reg)
+        self.chat.tag_configure("ok", foreground=OK, font=self.f_mono_reg)
+        self.chat.tag_configure("err", foreground=ERR, font=self.f_mono_reg)
         self.chat.tag_configure("hr", foreground=GRID, font=(self.f_mono, 8))
 
     def _build_network(self, parent):

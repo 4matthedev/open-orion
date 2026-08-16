@@ -1,6 +1,6 @@
 """Unit tests for the cross-platform helpers."""
 
-from orion.platform import (
+from orion.providers.platform import (
     data_dir,
     is_linux,
     is_windows,

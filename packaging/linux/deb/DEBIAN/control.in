@@ -3,6 +3,7 @@ Version: @VERSION@
 Architecture: amd64
 Maintainer: Open Orion <4matthedev@gmail.com>
 Depends: libc6 (>= 2.34), libtcl8.6, libtk8.6
+Replaces: open-orion (<< 2.9.0)
 Section: utils
 Priority: optional
 Homepage: https://github.com/4matthedev/open-orion

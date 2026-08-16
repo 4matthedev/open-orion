@@ -1,6 +1,6 @@
 """Unit tests for the persistent memory store."""
 
-from orion.memory import Memory
+from orion.core.memory import Memory
 
 
 def _fresh(tmp_path):

@@ -1,4 +1,4 @@
-"""Shared agent control-loop used by the CLI and both desktop UIs.
+"""Shared agent control-loop used by the CLI and the desktop HUD.
 
 The LLM emits a single JSON action (``run | read | ls | screenshot |
 remember | ask | done``); this module owns the conversation context, the
@@ -7,8 +7,8 @@ that turns actions into executed commands with the static risk guard applied.
 
 A concrete user interface provides a host of thin callbacks (print a line,
 append to the log, ask for confirmation, ...) via the :class:`Host`
-interface. Both ``orion.cli`` and the tkinter UIs render the same code path,
-so the safety/confirmation flow can never drift between them.
+interface. Both ``orion.cli.cli`` and the tkinter HUD render the same code
+path, so the safety/confirmation flow can never drift between them.
 """
 
 from __future__ import annotations
@@ -16,19 +16,19 @@ from __future__ import annotations
 import os
 from typing import Protocol
 
-from .config import AppSettings
-from .context import ContextHistory
-from .executor import ExecResult, Executor
-from .llm import LLMError
-from .memory import Memory
-from .models import ActionRequest, parse_action
-from .prompt import system_prompt
-from .security import (
+from ..cli.prompt import system_prompt
+from ..providers.llm import LLMError
+from ..utils.models import ActionRequest, parse_action
+from ..utils.security import (
     RiskAssessment,
     classify_command,
     needs_confirmation,
     sanitize_command,
 )
+from .config import AppSettings
+from .context import ContextHistory
+from .executor import ExecResult, Executor
+from .memory import Memory
 
 VISION_PROMPT = (
     "Look at this screenshot of the user's actual screen and describe what is "
