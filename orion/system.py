@@ -53,9 +53,9 @@ def _win_cpu_load() -> float:
         i1, k1 = sample()
         time.sleep(0.25)
         i2, k2 = sample()
-        total = (k2 - k1) - (i2 - i1)
-        busy = (k2 - k1) - (i2 - i1)
-        return 100.0 * busy / total if total > 0 else 0.0
+        wall = k2 - k1  # kernel time already includes idle time
+        busy = wall - (i2 - i1)
+        return 100.0 * busy / wall if wall > 0 else 0.0
     except Exception:  # noqa: BLE001 - best-effort telemetry
         return 0.0
 
@@ -84,7 +84,7 @@ def _win_memory() -> tuple[float, float]:
             return (mem.ullAvailPhys / (1024 ** 3),
                     mem.ullTotalPhys / (1024 ** 3))
     except Exception:  # noqa: BLE001 - best-effort telemetry
-        pass
+        return 0.0, 0.0
     return 0.0, 0.0
 
 
@@ -104,11 +104,11 @@ def _win_battery() -> int | None:
             ]
 
         status = SYSTEM_POWER_STATUS()
-        if ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(status)):
-            if status.BatteryLifePercent not in (255, 0):
-                return int(status.BatteryLifePercent)
+        if (ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(status))
+                and status.BatteryLifePercent not in (255, 0)):
+            return int(status.BatteryLifePercent)
     except Exception:  # noqa: BLE001 - best-effort telemetry
-        pass
+        return None
     return None
 
 
@@ -225,7 +225,7 @@ def sys_cpu_temp() -> float | None:
                 if temps and temps[0].current:
                     return float(temps[0].current)
         except Exception:  # noqa: BLE001 - best-effort telemetry
-            pass
+            return None
         return None
     temp = read_float("/sys/class/thermal/thermal_zone0/temp", -1)
     return temp / 1000.0 if temp >= 0 else None
@@ -259,12 +259,12 @@ def sys_net_rx_tx() -> tuple[int, int]:
 __all__ = [
     "read_float",
     "read_int",
-    "sys_uptime",
-    "sys_hostname",
-    "sys_cpu_load",
-    "sys_memory",
     "sys_battery",
+    "sys_cpu_load",
     "sys_cpu_temp",
     "sys_disk",
+    "sys_hostname",
+    "sys_memory",
     "sys_net_rx_tx",
+    "sys_uptime",
 ]

@@ -25,7 +25,7 @@ def main(argv=None) -> int:
     if "--gui" in argv or "-g" in argv:
         rest = [a for a in argv if a not in ("--gui", "-g")]
         try:
-            import tkinter  # noqa: F401
+            import tkinter  # noqa: F401, PLC0415 - availability probe before GUI import
         except ImportError as exc:
             print(
                 "open-orion: GUI needs tkinter, which this Python lacks:\n"
@@ -34,7 +34,7 @@ def main(argv=None) -> int:
                 file=sys.stderr,
             )
             return 3
-        from orion.gui import main as gui_main
+        from orion.gui import main as gui_main  # noqa: PLC0415 - lazy, GUI-only dep
         return gui_main(rest)
     return cli_main(argv)
 

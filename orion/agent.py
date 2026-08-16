@@ -244,10 +244,9 @@ class Agent:
             host.finish()
             return
 
-        if needs_confirmation(
+        if (needs_confirmation(
             self.settings, assessment.level, action.requires_confirmation
-        ):
-            if not host.confirm(command, assessment.level, assessment.reason):
+        ) and not host.confirm(command, assessment.level, assessment.reason)):
                 host.log("warn", "declined by user")
                 self.context.add(
                     "user", "[tool result] DECLINED by user: $ %s" % command)

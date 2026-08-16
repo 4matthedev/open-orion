@@ -85,7 +85,7 @@ class Voice:
                     % (kokoro_dir(), kokoro_dir(), kokoro_dir())
                 )
             try:
-                import kokoro_onnx  # noqa: PLC0415 - lazy, heavy import
+                import kokoro_onnx  # noqa: F401, PLC0415 - availability probe only
             except ImportError as exc:
                 raise VoiceError(
                     "Kokoro requires kokoro-onnx: pip install kokoro-onnx espeakng-loader"
@@ -97,7 +97,7 @@ class Voice:
                     "to a .wav of the voice to clone"
                 )
             try:
-                import TTS  # noqa: PLC0415 - lazy, heavy import
+                import TTS  # noqa: F401, PLC0415 - availability probe only
             except ImportError as exc:
                 raise VoiceError(
                     "XTTS requires coqui-tts: pip install coqui-tts"
@@ -177,7 +177,8 @@ class Voice:
         """Return capture sources (excluding loopback monitors) with descriptions."""
         try:
             short = subprocess.run(
-                ["pactl", "list", "short", "sources"], capture_output=True, text=True, timeout=10
+                ["pactl", "list", "short", "sources"], capture_output=True, text=True,
+                timeout=10, check=False,
             ).stdout
         except (subprocess.TimeoutExpired, OSError):
             return [{"name": "default", "description": "system default"}]
@@ -188,7 +189,8 @@ class Voice:
                 sources.append({"name": parts[1], "description": parts[1]})
         try:
             detail = subprocess.run(
-                ["pactl", "list", "sources"], capture_output=True, text=True, timeout=10
+                ["pactl", "list", "sources"], capture_output=True, text=True,
+                timeout=10, check=False,
             ).stdout
         except (subprocess.TimeoutExpired, OSError):
             detail = ""
@@ -597,7 +599,9 @@ class Voice:
 
     def _stt(self):
         if self._stt_model is None:
-            from faster_whisper import WhisperModel  # noqa: PLC0415 - lazy, heavy import
+            from faster_whisper import (  # noqa: PLC0415 - lazy, heavy import
+                WhisperModel,
+            )
 
             self._stt_model = WhisperModel(
                 self.settings.stt_model,

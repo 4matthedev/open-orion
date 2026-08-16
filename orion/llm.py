@@ -200,7 +200,7 @@ class LiteLLMProvider:
             kwargs["api_key"] = self.api_key
         try:
             resp = litellm.completion(**kwargs)
-        except Exception as exc:  # noqa: BLE001 - normalize upstream errors
+        except Exception as exc:
             raise LLMError(f"api request failed: {exc}") from exc
         try:
             return resp.choices[0].message.content.strip()

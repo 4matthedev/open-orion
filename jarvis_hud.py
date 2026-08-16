@@ -9,6 +9,7 @@ for the interface; real telemetry from /proc and the real agent loop
 from __future__ import annotations
 
 import argparse
+import contextlib
 import math
 import os
 import platform as platform_mod
@@ -761,7 +762,7 @@ class HUD(tk.Tk):
         if cmd in ("/exit", "/quit", "/q"):
             self._on_close()
         elif cmd in ("/help", "?"):
-            for l in ("COMMANDS", "  <text>        talk to Orion",
+            for line_ in ("COMMANDS", "  <text>        talk to Orion",
                       "  /talk          toggle voice",
                       "  /look          capture + describe my screen",
                       "  /mic           pick microphone",
@@ -771,7 +772,7 @@ class HUD(tk.Tk):
                       "  /memory        list permanent memory",
                       "  /forget <id>   delete a memory note",
                       "  /exit          quit"):
-                self._log_feed("head", l)
+                self._log_feed("head", line_)
         elif cmd == "/status":
             self._log_feed("head", "STATUS")
             self._log_feed("dim", "  provider %s · model %s" % (
@@ -818,7 +819,7 @@ class HUD(tk.Tk):
                                    "  #%d  %s" % (n["id"], n["text"][:150]))
         elif cmd == "/forget":
             try:
-                nid = int((arg.split()[0] if arg else ""))
+                nid = int(arg.split()[0] if arg else "")
             except (ValueError, IndexError):
                 self._log_feed("warn", "  usage: /forget <id>")
             else:
@@ -910,8 +911,8 @@ class HUD(tk.Tk):
         if self.voice and text:
             try:
                 self.voice.speak(text)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception:  # noqa: BLE001 - speech must never crash the UI
+                return
 
     def _chat(self, who: str, text: str) -> None:
         self.chat.configure(state="normal")
@@ -973,7 +974,7 @@ class HUD(tk.Tk):
             self._after_poll = self.after(60, self._poll_queue)
 
     def _apply_telemetry(self, data) -> None:
-        cpu, mem_avail, mem_total, bat, temp, disk_pct, disk_free, rx, tx = data
+        cpu, mem_avail, mem_total, bat, _temp, disk_pct, disk_free, _rx, _tx = data
         uptime = sys_uptime()
         h, rem = divmod(int(uptime), 3600)
         m, s = divmod(rem, 60)
@@ -1019,14 +1020,12 @@ class HUD(tk.Tk):
                      "_after_telemetry", "_after_feed"):
             aid = getattr(self, name, None)
             if aid:
-                try:
+                with contextlib.suppress(tk.TclError):
                     self.after_cancel(aid)
-                except tk.TclError:
-                    pass
         try:
             self.provider.close()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - best-effort close
+            self._log_feed("warn", "  [exit] provider shutdown failed: %s" % exc)
         self.destroy()
 
     _closing = False

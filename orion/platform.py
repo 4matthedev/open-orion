@@ -80,13 +80,13 @@ def piper_voices_dir() -> Path:
 
 
 __all__ = [
-    "is_windows",
-    "is_linux",
-    "shell_name",
-    "shell_args",
-    "syntax_check_args",
     "data_dir",
-    "screenshots_dir",
+    "is_linux",
+    "is_windows",
     "kokoro_dir",
     "piper_voices_dir",
+    "screenshots_dir",
+    "shell_args",
+    "shell_name",
+    "syntax_check_args",
 ]

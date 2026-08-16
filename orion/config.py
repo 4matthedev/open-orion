@@ -92,7 +92,7 @@ class AppSettings(BaseSettings):
     working_dir: str | None = None
 
     @model_validator(mode="after")
-    def _require_api_key_when_explicit(self) -> "AppSettings":
+    def _require_api_key_when_explicit(self) -> AppSettings:
         if self.provider == "api" and not self.api_key.get_secret_value():
             raise ValueError(
                 "provider='api' requires ORION_API_KEY (set it in .env or the environment)"

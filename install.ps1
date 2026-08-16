@@ -44,7 +44,7 @@ foreach ($candidate in @("python3.13", "python3.12", "python3.11", "python", "py
         # py launcher: pick the latest 3.x
         $probe = & py -3.12 -c "import sys; print(sys.version_info[0]*10 + sys.version_info[1])" 2>$null
         if ($LASTEXITCODE -eq 0) {
-            $py = "py -3.12"
+            $py = @("py", "-3.12")
             break
         }
         continue

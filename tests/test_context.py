@@ -23,7 +23,7 @@ def test_turn_limit_trims_oldest_pairs():
 def test_char_limit_trims_pairs_not_orphans():
     ctx = ContextHistory(max_turns=100, max_chars=40)
     # 3 pairs of 20 chars each = 60 chars total; only 2 pairs fit.
-    for i in range(3):
+    for _ in range(3):
         ctx.add("user", "u" * 10)
         ctx.add("assistant", "a" * 10)
     assert len(ctx) == 4

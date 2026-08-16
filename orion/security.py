@@ -18,8 +18,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from .config import AppSettings
@@ -200,7 +199,7 @@ def classify_command(command: str) -> RiskAssessment:
 
 
 def needs_confirmation(
-    settings: "AppSettings",
+    settings: AppSettings,
     level: Level,
     model_requests_confirm: bool = False,
 ) -> bool:

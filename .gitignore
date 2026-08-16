@@ -20,6 +20,11 @@ orion_raw.mp3
 orion_sample.wav
 tools/*.wav
 
+# ---- Local voice-model downloads (Kokoro / piper) ----
+voices-v1.0.bin
+kokoro-v1.0.onnx
+*.onnx.json
+
 # ---- Local app data (screenshots, ui.json, memory) ----
 .local/
 

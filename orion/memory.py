@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import threading
+from contextlib import suppress
 from pathlib import Path
 
 from .platform import data_dir
@@ -23,10 +24,8 @@ class Memory:
         self.path = path
         self._lock = threading.Lock()
         self._notes: list[dict] = []
-        try:
+        with suppress(OSError):
             self.path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
         self.load()
 
     def load(self) -> None:
@@ -38,14 +37,12 @@ class Memory:
             self._notes = []
 
     def save(self) -> None:
-        try:
+        with suppress(OSError):
             self.path.write_text(
                 json.dumps({"notes": self._notes}, indent=2,
                            ensure_ascii=False),
                 encoding="utf-8",
             )
-        except OSError:
-            pass
 
     def remember(self, text: str) -> int:
         text = " ".join(text.split())

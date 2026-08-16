@@ -124,6 +124,6 @@ def _environment() -> str:
             f"user:     {getpass.getuser()}",
             f"shell:    {shell}",
             f"cwd:      {os.getcwd()}",
-            f"time:     {dt.datetime.now().strftime('%Y-%m-%d %H:%M %Z')}",
+            f"time:     {dt.datetime.now().astimezone().strftime('%Y-%m-%d %H:%M %Z')}",
         ]
     )

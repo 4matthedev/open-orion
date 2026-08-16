@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from typing import ClassVar
 
 from rich.console import Console
 from rich.panel import Panel
@@ -52,7 +53,8 @@ class TalkState:
 class CLIHost:
     """Renders agent events (and asks for confirmation) in the terminal."""
 
-    _LOGGED = {"reason": "dim", "ok": "green", "warn": "yellow", "err": "red"}
+    _LOGGED: ClassVar[dict[str, str]] = {"reason": "dim", "ok": "green",
+                                          "warn": "yellow", "err": "red"}
     _SH_LEXER = shell_name()
 
     def __init__(self, console: Console, talk: TalkState) -> None:
@@ -383,7 +385,7 @@ def _handle_special(
             ), title=f"permanent memory ({len(items)})"))
     elif cmd == "/forget":
         try:
-            nid = int((arg.split()[0] if arg else ""))
+            nid = int(arg.split()[0] if arg else "")
         except (ValueError, IndexError):
             console.print("[yellow]usage: /forget <id>[/yellow]")
         else:

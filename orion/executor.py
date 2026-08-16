@@ -57,6 +57,7 @@ class Executor:
                     check,
                     capture_output=True,
                     text=True,
+                    check=False,
                 )
                 if check_run.returncode != 0:
                     return ExecResult(
@@ -74,6 +75,7 @@ class Executor:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                check=False,
             )
             stdout, stderr, returncode = proc.stdout, proc.stderr, proc.returncode
             timed_out = False
@@ -127,15 +129,16 @@ class Executor:
                     cmd += ["-g", region]
                 cmd.append(str(out))
                 proc = subprocess.run(cmd, capture_output=True, text=True,
-                                      timeout=timeout)
+                                      timeout=timeout, check=False)
                 if proc.returncode != 0 and region:
                     cmd = ["grim", str(out)]
                     proc = subprocess.run(cmd, capture_output=True,
-                                          text=True, timeout=timeout)
+                                          text=True, timeout=timeout,
+                                          check=False)
             elif shutil.which("import"):
                 cmd = ["import", "-window", "root", str(out)]
                 proc = subprocess.run(cmd, capture_output=True, text=True,
-                                      timeout=timeout)
+                                      timeout=timeout, check=False)
             else:
                 return ("error: no screenshot tool found — install grim "
                         "(Wayland) or ImageMagick's 'import' (X11)")
@@ -171,6 +174,7 @@ class Executor:
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
 
     def read_file(self, path: str, limit: int | None = None) -> str:

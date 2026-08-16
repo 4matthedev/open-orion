@@ -23,8 +23,9 @@ Usage (from the repository root):
 from __future__ import annotations
 
 import argparse
-import re
+import json
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -61,7 +62,7 @@ def stream_llm(
     temperature: float = 0.1,
 ) -> list[str]:
     """Yield text deltas as Ollama streams /api/chat. Cleans up on exit."""
-    client = httpx.Client(timeout=None)
+    client = httpx.Client(timeout=None)  # noqa: S113 - streaming has no deadline
     try:
         with client.stream(
             "POST",
@@ -81,7 +82,7 @@ def stream_llm(
             for line in resp.iter_lines():
                 if not line:
                     continue
-                data = __import__("json").loads(line)
+                data = json.loads(line)
                 if data.get("done"):
                     return
                 chunk = data.get("message", {}).get("content", "")
@@ -129,8 +130,8 @@ class SentenceAssembler:
 # --------------------------------------------------------------------------
 
 def _writes16(path: Path, wav, sr: int) -> None:
-    import numpy as np
-    import soundfile as sf
+    import numpy as np  # noqa: PLC0415 - lazy, heavy import
+    import soundfile as sf  # noqa: PLC0415 - lazy, heavy import
 
     try:
         samples = wav.detach().cpu().numpy()
@@ -290,8 +291,8 @@ def run_pipeline(
     model: str = DEFAULT_MODEL,
     out_dir: Path | None = None,
 ) -> None:
-    text_bus: "queue.Queue[str | None]" = queue.Queue(maxsize=8)
-    audio_bus: "queue.Queue[Path | None]" = queue.Queue(maxsize=8)
+    text_bus: queue.Queue[str | None] = queue.Queue(maxsize=8)
+    audio_bus: queue.Queue[Path | None] = queue.Queue(maxsize=8)
     paplay = shutil.which("paplay") if play else None
     stop = threading.Event()
 
@@ -317,7 +318,8 @@ def run_pipeline(
                 return
             try:
                 if paplay:
-                    subprocess.run([paplay, str(wav)], capture_output=True, timeout=300)
+                    subprocess.run([paplay, str(wav)], capture_output=True,
+                                   timeout=300, check=False)
                 if out_dir:
                     out_dir.mkdir(parents=True, exist_ok=True)
                     target = out_dir / f"{time.monotonic():.3f}.wav"

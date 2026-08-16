@@ -1,5 +1,6 @@
 """Unit tests for the JSON action contract parser."""
 
+import pydantic
 import pytest
 
 from orion.models import ActionRequest, parse_action
@@ -51,5 +52,5 @@ def test_parse_raises_on_missing_object():
 
 
 def test_action_request_validates_bad_fields():
-    with pytest.raises(Exception):
+    with pytest.raises(pydantic.ValidationError):
         ActionRequest(command=1)

@@ -11,6 +11,7 @@ or:        python main.py --gui [options]
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import queue
 import sys
@@ -27,6 +28,7 @@ from .executor import Executor
 from .llm import LLMError, get_provider
 from .memory import Memory
 from .models import ActionRequest
+from .platform import is_windows
 from .themes import (
     ThemeError,
     load_theme,
@@ -36,7 +38,6 @@ from .themes import (
     themes_list,
 )
 from .voice import Voice, VoiceError
-from .platform import is_windows
 
 # --------------------------------------------------------------------------
 # Theme — palette resolved at startup from --theme / ORION_THEME / .env
@@ -127,13 +128,11 @@ class Orb(tk.Canvas):
     def set_busy(self, busy: bool) -> None:
         self._busy = busy
 
-    def destroy(self) -> None:  # noqa: D102
+    def destroy(self) -> None:
         self._stop = True
         if self._after:
-            try:
+            with contextlib.suppress(tk.TclError):
                 self.after_cancel(self._after)
-            except tk.TclError:
-                pass
             self._after = None
         super().destroy()
 
@@ -195,7 +194,7 @@ class Log:
         self.text.configure(state="normal")
         if prefix:
             self.text.insert("end", prefix + " ", (tag, "prefix"))
-        for i, line in enumerate(content.rstrip().split("\n")):
+        for line in content.rstrip().split("\n"):
             self.text.insert("end", line + "\n", tag)
         if self._see:
             self.text.see("end")
@@ -476,10 +475,8 @@ class OrionGUI(tk.Tk):
 
     def _close_settings(self) -> None:
         if self._settings_win is not None:
-            try:
+            with contextlib.suppress(tk.TclError):
                 self._settings_win.destroy()
-            except tk.TclError:
-                pass
             self._settings_win = None
 
     def _open_settings(self) -> None:
@@ -713,7 +710,7 @@ class OrionGUI(tk.Tk):
                     self.post("log", "dim", "#%d  %s" % (n["id"], n["text"][:150]))
         elif cmd == "/forget":
             try:
-                nid = int((arg.split()[0] if arg else ""))
+                nid = int(arg.split()[0] if arg else "")
             except (ValueError, IndexError):
                 self.post("log", "warn", "usage: /forget <id>")
             else:
@@ -947,15 +944,13 @@ class OrionGUI(tk.Tk):
     def _on_close(self) -> None:
         self._closing = True
         if self._after_poll:
-            try:
+            with contextlib.suppress(tk.TclError):
                 self.after_cancel(self._after_poll)
-            except tk.TclError:
-                pass
             self._after_poll = None
         try:
             self.provider.close()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 - best-effort close
+            self.log.append("warn", "provider shutdown failed: %s" % exc)
         self.destroy()
 
     _closing = False
@@ -1012,7 +1007,6 @@ def main(argv: list[str] | None = None) -> int:
         try:
             os.chdir(settings.working_dir)
         except OSError as exc:
-            import tkinter.messagebox as messagebox
             root = tk.Tk()
             root.withdraw()
             messagebox.showerror("Open Orion", "cannot chdir to %s:\n%s" % (
