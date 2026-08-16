@@ -77,10 +77,10 @@ def apply_theme(cli: str | None = None, configured: str | None = None,
 
 apply_theme()
 
-if sys.stdout is None:  # --windowed GUI build on Windows has no console
-    sys.stdout = open(os.devnull, "w", encoding="utf-8", closefd=False)  # noqa: SIM115 - long-lived handle
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")  # noqa: SIM115 - long-lived handle
 if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w", encoding="utf-8", closefd=False)  # noqa: SIM115 - long-lived handle
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")  # noqa: SIM115 - long-lived handle
 
 FPS_MS      = 16
 MONO_FONTS  = ("Consolas", "Courier New", "DejaVu Sans Mono", "Liberation Mono",
