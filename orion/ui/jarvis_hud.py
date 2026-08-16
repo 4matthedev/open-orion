@@ -77,6 +77,11 @@ def apply_theme(cli: str | None = None, configured: str | None = None,
 
 apply_theme()
 
+if sys.stdout is None:  # --windowed GUI build on Windows has no console
+    sys.stdout = open(os.devnull, "w", encoding="utf-8", closefd=False)  # noqa: SIM115 - long-lived handle
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8", closefd=False)  # noqa: SIM115 - long-lived handle
+
 FPS_MS      = 16
 MONO_FONTS  = ("Consolas", "Courier New", "DejaVu Sans Mono", "Liberation Mono",
                "Courier", "monospace")
@@ -622,6 +627,12 @@ class HUD(tk.Tk):
 
     def _run_boot(self):
         self._log_feed("head", f"OPEN ORION v{__version__} — boot sequence")
+        if isinstance(self.provider, _UnavailableProvider):
+            self._log_feed("err", "  [FAIL] provider unavailable — %s" % self.provider.reason)
+            self._log_feed("warn", "  [fix ] start Ollama (ollama serve), or set"
+                                   " ORION_API_KEY in .env")
+            self.status_var.set("NO LLM — CHECK OLLAMA")
+            return
         self._log_feed("ok", "  [ OK ] neural matrix linked")
         self._log_feed("ok", "  [ OK ] shell interface armed")
         self._log_feed("ok", "  [ OK ] provider: %s · model: %s" % (
@@ -1034,6 +1045,47 @@ class HUD(tk.Tk):
     _power = 0.0
 
 
+class _UnavailableProvider:
+    """Stand-in provider so the HUD still renders when the real provider can't
+    start (e.g. Ollama off + no API key). Every user action reports the error."""
+
+    name = "unavailable"
+    model = "-"
+
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+
+    def chat(self, messages: list, system: str | None = None,
+             temperature: float | None = None,
+             timeout: int | None = None, model: str | None = None) -> str:
+        raise LLMError(self.reason)
+
+    def close(self) -> None:
+        return None
+
+    def set_model(self, model: str) -> None:
+        return None
+
+
+def _log_startup_error(message: str) -> None:
+    """Best-effort stderr note before the GUI takes over diagnostics."""
+    with contextlib.suppress(Exception):
+        print("orion-hud: provider unavailable — %s" % message, file=sys.stderr)
+
+
+def _fatal(title: str, message: str) -> int:
+    """Surface a fatal startup error in a GUI dialog (windowed builds have no
+    console, so a silent exit would look like the app 'not starting')."""
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror(title, message, parent=root)
+        root.destroy()
+    except Exception:  # noqa: BLE001 - no display; fall back to stderr
+        print("orion-hud: %s" % message, file=sys.stderr)
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="orion-hud",
@@ -1056,7 +1108,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.list_themes:
-        print("available themes: %s" % ", ".join(themes_list()))
+        print("orion-hud: available themes: %s" % ", ".join(themes_list()))
         return 0
 
     settings = get_settings()
@@ -1080,14 +1132,14 @@ def main(argv: list[str] | None = None) -> int:
         try:
             os.chdir(settings.working_dir)
         except OSError as exc:
-            print("orion-hud: cannot chdir to %s: %s" % (settings.working_dir, exc))
-            return 2
+            return _fatal("Open Orion — bad working directory",
+                          "cannot chdir to %s:\n%s" % (settings.working_dir, exc))
 
     try:
         provider = get_provider(settings)
     except LLMError as exc:
-        print("orion-hud: %s" % exc)
-        return 1
+        _log_startup_error(str(exc))
+        provider = _UnavailableProvider(str(exc))
 
     executor = Executor(settings)
 

@@ -67,7 +67,7 @@ jobs:
       - name: Build executables
         run: |
           pyinstaller --noconfirm --noupx --onefile --name orion --icon packaging\windows\open-orion.ico --version-file orion_version.txt --collect-all litellm --collect-all openai --collect-all tiktoken main.py
-          pyinstaller --noconfirm --noupx --onefile --name orion-hud --icon packaging\windows\open-orion.ico --version-file orion-hud_version.txt --collect-all litellm --collect-all openai --collect-all tiktoken orion/ui/jarvis_hud.py
+          pyinstaller --noconfirm --noupx --onefile --name orion-hud --windowed --icon packaging\windows\open-orion.ico --version-file orion-hud_version.txt --collect-all litellm --collect-all openai --collect-all tiktoken orion/ui/jarvis_hud.py
 
       - name: Smoke test executables
         run: |

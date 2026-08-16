@@ -106,8 +106,14 @@ class OllamaProvider:
 
     def ping(self) -> bool:
         try:
-            resp = self._client.get(f"{self.base_url}/api/tags")
-            return resp.status_code == 200
+            # Short-lived client so the startup health-check never hangs for
+            # llm_timeout (the HUD/CLI block on this before showing any UI).
+            probe = httpx.Client(timeout=httpx.Timeout(3.0, connect=2.0))
+            try:
+                resp = probe.get(f"{self.base_url}/api/tags")
+                return resp.status_code == 200
+            finally:
+                probe.close()
         except httpx.HTTPError:
             return False
 
