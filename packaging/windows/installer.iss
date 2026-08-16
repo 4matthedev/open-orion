@@ -93,11 +93,6 @@ begin
     Result := True;
     Exit;
   end;
-  if PathSearch('ollama.exe') <> '' then
-  begin
-    Result := True;
-    Exit;
-  end;
   if RegValueExists(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\ollama.exe', '') then
     Result := True;
 end;
