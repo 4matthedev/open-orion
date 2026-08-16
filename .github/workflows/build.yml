@@ -75,10 +75,11 @@ jobs:
         shell: pwsh
         run: |
           $ver = "${{ needs.version.outputs.version }}"
+          $artifact = "${{ needs.version.outputs.artifact }}"
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "packaging\windows\installer.iss" "/DAppVersion=$ver"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $src = "dist-installer\OpenOrion-Setup-$ver.exe"
-          Copy-Item $src "dist\$(${{ needs.version.outputs.artifact }})-windows-x86_64-setup.exe" -Force
+          Copy-Item $src "dist\${artifact}-windows-x86_64-setup.exe" -Force
           Get-ChildItem dist
 
       - name: Upload Windows build artifacts
