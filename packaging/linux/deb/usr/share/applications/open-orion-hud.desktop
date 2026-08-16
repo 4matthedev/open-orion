@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Open Orion HUD
+Comment=Futuristic HUD command deck
+Exec=/opt/open-orion/orion-hud
+Path=/opt/open-orion
+Terminal=false
+Type=Application
+Categories=Utility;System;

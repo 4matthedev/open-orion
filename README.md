@@ -50,6 +50,23 @@ confirmation flow is identical everywhere.
 | Screenshots          | ✔ grim / import | ✔ PowerShell System.Drawing |
 | Talk mode (voice)    | ✔ (PulseAudio/PipeWire) | — graceful, disables itself |
 
+## Binaries & installers
+
+Pre-built executables and installers are attached to each [GitHub
+release](https://github.com/4matthedev/open-orion/releases), built
+automatically by CI (a tag push `v*` rebuilds and re-uploads them):
+
+| Asset                                                       | What it is                                        |
+|-------------------------------------------------------------|---------------------------------------------------|
+| `open-orion-<ver>-windows-x86_64-setup.exe`                 | **Windows installer** (Inno Setup) — Start-menu shortcuts, installs into Program Files |
+| `orion.exe`, `orion-hud.exe`                                | Standalone Windows executables (double-click to run; `orion.exe --gui` opens the deck) |
+| `open-orion_<ver>_amd64.deb`                                | Debian/Ubuntu package (`sudo apt install ./open-orion_<ver>_amd64.deb`) |
+| `open-orion-<ver>-linux-x86_64.tar.gz`                      | Portable Linux bundle with `install.sh`           |
+
+The binaries are **single-file** (PyInstaller) and bundle the LLM clients
+(Ollama + LiteLLM). Point them at a local Ollama server or a cloud API key via
+`.env`, exactly like the source install.
+
 ## Quickstart
 
 ### One-command install

@@ -1,0 +1,192 @@
+name: build-binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to attach binaries to (e.g. v2.8.1). Leave empty to use v{version}.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release_tag: ${{ steps.v.outputs.release_tag }}
+      artifact: ${{ steps.v.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        shell: bash
+        run: |
+          VER=$(python3 -c "import re;print(re.search(r'version = \"([^\"]+)\"', open('pyproject.toml').read()).group(1))")
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ inputs.release_tag }}"
+            [ -z "$TAG" ] && TAG="v$VER"
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "artifact=open-orion-$VER" >> "$GITHUB_OUTPUT"
+
+  # ------------------------------------------------------------------ Windows
+  build-windows:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install .[api]
+
+      - name: Build executables
+        run: |
+          pyinstaller --noconfirm --onefile --name orion --collect-all litellm --collect-all openai --collect-all tiktoken main.py
+          pyinstaller --noconfirm --onefile --name orion-hud --collect-all litellm --collect-all openai --collect-all tiktoken jarvis_hud.py
+
+      - name: Smoke test executables
+        run: |
+          .\dist\orion.exe --version
+          .\dist\orion-hud.exe --help
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $ver = "${{ needs.version.outputs.version }}"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "packaging\windows\installer.iss" "/DAppVersion=$ver"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $src = "dist-installer\OpenOrion-Setup-$ver.exe"
+          Copy-Item $src "dist\$(${{ needs.version.outputs.artifact }})-windows-x86_64-setup.exe" -Force
+          Get-ChildItem dist
+
+      - name: Upload Windows build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            dist/orion.exe
+            dist/orion-hud.exe
+            dist/*setup*.exe
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------- Linux
+  build-linux:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tcl/Tk for the GUI binary
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-tk
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install .[api]
+
+      - name: Build executables
+        run: |
+          pyinstaller --noconfirm --onefile --name orion --collect-all litellm --collect-all openai --collect-all tiktoken main.py
+          pyinstaller --noconfirm --onefile --name orion-hud --collect-all litellm --collect-all openai --collect-all tiktoken jarvis_hud.py
+
+      - name: Smoke test executables
+        run: |
+          ./dist/orion --version
+          ./dist/orion-hud --help
+
+      - name: Build .deb package
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ needs.version.outputs.version }}"
+          CFG=packaging/linux/deb
+          ROOT=dist/debroot
+          rm -rf "$ROOT"
+          mkdir -p "$ROOT/DEBIAN" "$ROOT/opt/open-orion" "$ROOT/usr/bin"
+          cp dist/orion dist/orion-hud "$ROOT/opt/open-orion/"
+          ln -s /opt/open-orion/orion "$ROOT/usr/bin/orion"
+          ln -s /opt/open-orion/orion-hud "$ROOT/usr/bin/orion-hud"
+          cp -r "$CFG/usr/." "$ROOT/usr/"
+          sed "s/@VERSION@/$VER/" "$CFG/DEBIAN/control.in" > "$ROOT/DEBIAN/control"
+          dpkg-deb --build --root-owner-group "$ROOT" "dist/open-orion_${VER}_amd64.deb"
+
+      - name: Build .tar.gz bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ needs.version.outputs.version }}"
+          mkdir -p dist/pkg
+          cp dist/orion dist/orion-hud dist/pkg/
+          cp packaging/linux/bundle/install.sh dist/pkg/install.sh
+          chmod +x dist/pkg/install.sh
+          tar -C dist/pkg -czf "dist/${{ needs.version.outputs.artifact }}-linux-x86_64.tar.gz" .
+
+      - name: Upload Linux build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            dist/orion
+            dist/orion-hud
+            dist/*.deb
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  # ----------------------------------------------------------------- Release
+  release:
+    needs: [version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Stage files for release
+        run: |
+          mkdir -p deploy
+          cp artifacts/windows-build/* deploy/ || true
+          cp artifacts/linux-build/* deploy/ || true
+          ls -la deploy/
+
+      - name: Attach binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.release_tag }}
+          files: deploy/*
+          name: Open Orion ${{ needs.version.outputs.release_tag }} — binaries
+          body: |
+            Pre-built binaries and installers, built from commit `${{ github.sha }}`.
+
+            - **Windows:** `orion.exe` + `orion-hud.exe` (standalone, double-click to run) and `*-windows-x86_64-setup.exe` (Inno Setup installer, Start-Menu shortcuts).
+            - **Linux:** `orion` + `orion-hud` binaries, an amd64 `.deb` package, and a `*-linux-x86_64.tar.gz` bundle with `install.sh`.
+
+            Voice/talk mode stays Linux-only; the binaries run against a local Ollama server or a cloud API key in `.env`.

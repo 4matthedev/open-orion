@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Open Orion
+Comment=Autonomous AI agent (JARVIS-style)
+Exec=/opt/open-orion/orion --gui
+Path=/opt/open-orion
+Terminal=false
+Type=Application
+Categories=Utility;System;
