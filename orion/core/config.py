@@ -25,7 +25,8 @@ class AppSettings(BaseSettings):
     # --- LLM provider -------------------------------------------------
     provider: Literal["auto", "ollama", "api"] = "auto"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3.5:4b"
+    # Empty = auto-pick the best model installed in Ollama (zero-config).
+    ollama_model: str = ""
 
     api_provider: Literal["openai", "anthropic"] = "openai"
     api_model: str = "openai/gpt-4o-mini"

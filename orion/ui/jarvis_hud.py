@@ -414,7 +414,39 @@ class HUD(tk.Tk):
                            bg=BG_PANEL)
             lab.grid(row=2 + i, column=1, sticky="e", padx=(10, 0))
             self.diag[k] = lab
-        panel.grid_rowconfigure(2 + len(rows), weight=1)
+        # Model picker — populated from the models actually installed in Ollama.
+        tk.Label(panel, text="MODEL LIST", font=self.f_read, fg=TEXT_DIM,
+                 bg=BG_PANEL).grid(row=2 + len(rows), column=0, sticky="w",
+                                   pady=(8, 0))
+        frame = tk.Frame(panel, bg=BG_PANEL)
+        frame.grid(row=2 + len(rows) + 1, column=0, columnspan=2,
+                   sticky="ew", padx=(0, 0))
+        self.model_var = tk.StringVar(value=getattr(self.provider, "model", "-"))
+        self.model_menu = tk.OptionMenu(frame, self.model_var,
+                                        getattr(self.provider, "model", "-"),
+                                        command=self._on_model_pick)
+        self.model_menu.configure(bg=BG_PANEL, fg=PURPLE,
+                                  highlightbackground=GRID, bd=0,
+                                  activebackground=BG_DEEP, activeforeground=PURPLE,
+                                  font=self.f_read, indicatoron=True)
+        self.model_menu["menu"].configure(bg=BG_PANEL, fg=PURPLE,
+                                          activebackground=BG_DEEP,
+                                          activeforeground=PURPLE,
+                                          font=self.f_read)
+        self.model_menu.pack(fill="x")
+        panel.grid_rowconfigure(2 + len(rows) + 2, weight=1)
+
+    def _on_model_pick(self, name: str) -> None:
+        if not name or name == getattr(self.provider, "model", "-"):
+            return
+        try:
+            self.provider.set_model(name)
+        except Exception as exc:  # noqa: BLE001 - GUI shouldn't crash
+            self._log_feed("err", "  model switch failed: %s" % exc)
+            return
+        self.diag["MODEL"].config(text=name)
+        self._log_feed("ok", "  hot-swapped model to %s" % name)
+        self.status_var.set("MODEL: %s" % name)
 
     def _if_placeholder(self, mode: str) -> None:
         cur = self.input.get()
@@ -645,8 +677,35 @@ class HUD(tk.Tk):
         self._log_feed("dim", "  [sys] cwd %s" % os.getcwd())
         if len(self.memory):
             self._log_feed("dim", "  [mem] %d permanent note(s) loaded" % len(self.memory))
+        self._refresh_model_list()
         self._chat("orion", "All systems nominal. How may I assist you?")
         self.status_var.set("STANDBY")
+
+    def _refresh_model_list(self) -> None:
+        """Populate the model picker from the models installed in Ollama
+        (zero-config: whatever the user has pulled is available)."""
+        try:
+            list_models = self.provider.list_models
+        except AttributeError:
+            return
+        try:
+            models = list_models()
+        except Exception:  # noqa: BLE001 - non-fatal; picker just stays empty
+            models = []
+        if models:
+            self._q.put(("models", models))
+
+    def _apply_models(self, models: list[str]) -> None:
+        cur = getattr(self.provider, "model", "") or ""
+        if cur not in models and models:
+            cur = models[0]
+        menu = self.model_menu["menu"]
+        menu.delete(0, "end")
+        for name in models:
+            menu.add_command(label=name, command=tk._setit(self.model_var, name,
+                                                          self._on_model_pick))
+        self.model_var.set(cur if cur in models else models[0])
+        self.diag["MODEL"].config(text=self.model_var.get())
 
     # ------------------------------------------------------ interaction
 
@@ -780,6 +839,7 @@ class HUD(tk.Tk):
                       "  /look          capture + describe my screen",
                       "  /mic           pick microphone",
                       "  /status        provider · model", "  /model <name>  hot-swap model",
+                      "  /models        list installed models",
                       "  /context       print history", "  /clear         reset history",
                       "  /remember <n>  save permanent memory",
                       "  /memory        list permanent memory",
@@ -800,9 +860,22 @@ class HUD(tk.Tk):
         elif cmd == "/model":
             if arg:
                 self.provider.set_model(arg)
+                self.diag["MODEL"].config(text=arg)
                 self._log_feed("ok", "  model set to %s" % arg)
             else:
-                self._log_feed("warn", "  usage: /model <name>")
+                self._log_feed("warn", "  usage: /model <name>  (see /models)")
+        elif cmd == "/models":
+            self._log_feed("head", "AVAILABLE MODELS")
+            try:
+                models = self.provider.list_models() or []
+            except Exception:  # noqa: BLE001 - non-fatal listing
+                models = []
+            if not models:
+                self._log_feed("warn",
+                               "  none found — pull a model, e.g.  ollama pull qwen3.5:4b")
+            for name in models:
+                mark = " ◂" if name == getattr(self.provider, "model", "") else ""
+                self._log_feed("dim", "  %s%s" % (name, mark))
         elif cmd == "/clear":
             self.agent.context.clear()
             self.chat.configure(state="normal")
@@ -971,6 +1044,8 @@ class HUD(tk.Tk):
                     self.input.delete(0, "end")
                     self.input.insert(0, text)
                     self._on_send()
+                elif kind == "models":
+                    self._apply_models(args)
                 elif kind == "status":
                     self.status_var.set(args[0])
                 elif kind == "listen_off":

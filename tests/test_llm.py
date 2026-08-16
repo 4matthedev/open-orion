@@ -4,6 +4,7 @@ import base64
 
 from orion.core.config import AppSettings
 from orion.providers.llm import (
+    OllamaProvider,
     _build_litellm_messages,
     _build_ollama_messages,
     _is_vision_model,
@@ -70,3 +71,37 @@ def test_litellm_model_qualification():
 def test_litellm_model_keeps_explicit_prefix():
     settings = AppSettings(api_provider="openai", api_model="openai/gpt-4o-mini")
     assert _litellm_model(settings) == "openai/gpt-4o-mini"
+
+
+def test_auto_select_prefers_configured_model():
+    p = OllamaProvider("http://localhost:11434", "qwen3.5:4b")
+    p.list_models = lambda: ["llama3.1:8b", "qwen3.5:4b"]  # type: ignore[method-assign]
+    assert p.auto_select_model("qwen3.5:4b") == "qwen3.5:4b"
+    assert p.model == "qwen3.5:4b"
+
+
+def test_auto_select_falls_back_to_installed():
+    p = OllamaProvider("http://localhost:11434", "qwen3.5:4b")
+    p.list_models = lambda: ["llama3.1:8b", "mistral:7b"]  # type: ignore[method-assign]
+    chosen = p.auto_select_model("qwen3.5:4b")
+    assert chosen == "llama3.1:8b"
+    assert p.model == "llama3.1:8b"
+
+
+def test_auto_select_prefers_qwen_family():
+    p = OllamaProvider("http://localhost:11434", "")
+    p.list_models = lambda: ["mistral:7b", "qwen2.5:7b", "tinyllama:1.1b"]  # type: ignore[method-assign]
+    chosen = p.auto_select_model(None)
+    assert chosen == "qwen2.5:7b"
+
+
+def test_auto_select_prefers_biggest_variant_in_family():
+    p = OllamaProvider("http://localhost:11434", "")
+    p.list_models = lambda: ["qwen3.5:0.8b", "qwen3.5:9b", "qwen3.5:4b"]  # type: ignore[method-assign]
+    assert p.auto_select_model(None) == "qwen3.5:9b"
+
+
+def test_auto_select_empty_installed_returns_none():
+    p = OllamaProvider("http://localhost:11434", "")
+    p.list_models = lambda: []  # type: ignore[method-assign]
+    assert p.auto_select_model(None) is None

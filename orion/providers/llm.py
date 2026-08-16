@@ -104,6 +104,59 @@ class OllamaProvider:
     def supports_vision(self) -> bool:
         return _is_vision_model(self.model)
 
+    def list_models(self) -> list[str]:
+        """Return the names of models currently installed in Ollama."""
+        try:
+            resp = self._client.get(f"{self.base_url}/api/tags")
+            resp.raise_for_status()
+            tags = resp.json().get("models", [])
+            return sorted({m.get("name", "") for m in tags} - {""})
+        except (httpx.HTTPError, ValueError):
+            return []
+
+    def auto_select_model(self, preferred: str | None = None) -> str | None:
+        """Pick a usable installed model (best-effort, zero-config).
+
+        Falls back to a sensible general-purpose model when ``preferred`` is
+        not installed, so the app works with whatever the user has pulled.
+        Returns the chosen name, or None when Ollama has no models at all.
+        """
+        installed = self.list_models()
+        if not installed:
+            return None
+        want = (preferred or "").strip() or (self.model or "").strip()
+        if want and want in installed:
+            self.model = want
+            return want
+        # Prefer a general-purpose chat model for JSON action output.
+        prefer = ("qwen3.5", "qwen2.5", "qwen3", "qwen", "llama3.3",
+                  "llama3.1", "llama3", "llama", "mistral", "gemma3",
+                  "gemma", "phi4", "phi3", "deepseek", "aya")
+        for key in prefer:
+            family = [name for name in installed
+                      if name.split(":")[0] == key or name.startswith(key + ":")]
+            if family:
+                self.model = self._biggest(family)
+                return self.model
+        # Nothing matched a preference order — take the largest alphabetical name.
+        self.model = self._biggest(installed)
+        return self.model
+
+    @staticmethod
+    def _biggest(names: list[str]) -> str:
+        """Prefer the larger variant within a model family (e.g. qwen3.5:9b
+        over qwen3.5:0.8b), falling back to alphabetical order on ties."""
+
+        def size(name: str) -> float:
+            tag = name.split(":", 1)[1] if ":" in name else ""
+            digits = "".join(ch for ch in tag if ch.isdigit() or ch == ".")
+            try:
+                return float(digits) if digits else 0.0
+            except ValueError:
+                return 0.0
+
+        return max(sorted(names), key=size)
+
     def ping(self) -> bool:
         try:
             # Short-lived client so the startup health-check never hangs for
@@ -240,8 +293,14 @@ def _litellm_model(settings: AppSettings) -> str:
 
 
 def get_provider(settings: AppSettings) -> OllamaProvider | LiteLLMProvider:
-    """Resolve the configured provider, with local-first auto-detection."""
+    """Resolve the configured provider, with local-first auto-detection.
+
+    Under ``auto``/``ollama`` the model is auto-detected from whatever is
+    installed locally, so no model configuration is ever required.
+    """
     if settings.provider in ("auto", "ollama"):
+        # Zero-config: even when no model is configured, auto_select_model
+        # picks whichever model the user has installed locally.
         ollama = OllamaProvider(
             settings.ollama_base_url,
             settings.ollama_model,
@@ -249,8 +308,10 @@ def get_provider(settings: AppSettings) -> OllamaProvider | LiteLLMProvider:
             settings.llm_timeout,
         )
         if settings.provider == "ollama":
+            ollama.auto_select_model(settings.ollama_model)
             return ollama
         if ollama.ping():
+            ollama.auto_select_model(settings.ollama_model)
             return ollama
         ollama.close()
         if settings.provider == "auto" and settings.api_key_value:

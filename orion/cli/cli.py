@@ -31,7 +31,8 @@ Commands:
   /forget <id>       remove a permanent memory note
   /help              show this help
   /status            show provider / model / safety status
-  /model <name>      hot-swap the model (e.g. /model llama3.1:8b)
+  /model <name>      hot-swap the model (e.g. /model qwen3.5:4b, /models to list)
+  /models            list models installed in Ollama
   /context           print current conversation history
   /clear             reset conversation history
   /exit              quit
@@ -359,10 +360,33 @@ def _handle_special(
         )
     elif cmd == "/model":
         if not arg:
-            console.print("[yellow]usage: /model <name>[/yellow]")
+            try:
+                models = provider.list_models() or []
+            except Exception:  # noqa: BLE001 - non-fatal listing
+                models = []
+            if models:
+                console.print("[yellow]installed models:[/yellow]")
+                for name in models:
+                    mark = " ◂" if name == getattr(provider, "model", "") else ""
+                    console.print(f"  {name}{mark}")
+                console.print("[dim]pick one with /model <name>[/dim]")
+            else:
+                console.print("[yellow]no models installed — try  ollama pull qwen3.5:4b[/yellow]")
         else:
             provider.set_model(arg)
             console.print(f"[green]model set to {arg}[/green]")
+    elif cmd == "/models":
+        try:
+            models = provider.list_models() or []
+        except Exception:  # noqa: BLE001 - non-fatal listing
+            models = []
+        if not models:
+            console.print("[yellow]no models installed — try  ollama pull qwen3.5:4b[/yellow]")
+        else:
+            console.print("[green]installed models:[/green]")
+            for name in models:
+                mark = " ◂" if name == getattr(provider, "model", "") else ""
+                console.print(f"  {name}{mark}")
     elif cmd == "/context":
         for message in agent.context.messages():
             console.print(f"[dim]{message['role']}:[/dim] {message['content'][:400]}")

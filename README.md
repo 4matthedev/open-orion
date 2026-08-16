@@ -118,7 +118,7 @@ a local Ollama server or a cloud API exactly like on Linux. Windows data files
 ```bash
 # 1. Local model (recommended)
 ollama serve
-ollama pull qwen3.5:4b   # or llama3.1:8b
+ollama pull qwen3.5:4b   # pull any model you like — Orion auto-detects what's installed
 
 # 2. Install
 python3 -m venv .venv && source .venv/bin/activate
@@ -128,6 +128,12 @@ cp .env.example .env           # optional; defaults work with local Ollama
 # 3. Run
 python main.py                 # or: python -m orion
 ```
+
+> **Zero-config models:** Orion works with *whatever* you have pulled into
+> Ollama — no model setting needed. At startup it auto-picks the best
+> installed model, and you can switch anytime with `/model <name>` (or use
+> the **MODEL LIST** dropdown in the HUD, or `/models` to see everything
+> installed). Want a specific one? Set `ORION_OLLAMA_MODEL`.
 
 Cloud API (OpenAI/Anthropic) requires `litellm` (already in requirements):
 
@@ -194,6 +200,7 @@ itself is the primary guard, so run it only with models you trust.
 orion> show me disk usage and the top 5 largest files in ~/Projects
 orion> free up space in the apt cache        (confirmation offered)
 orion> /status                               (provider/model/safety status)
+orion> /models                               (list installed models)
 orion> /model llama3.1:8b                    (hot-swap local model)
 orion> /clear                                (reset context)
 orion> /exit
@@ -277,7 +284,7 @@ Windows the sources swap to psutil/ctypes equivalents):
 | ENCRYPTION        | `LOCAL` for Ollama, `TLS-1.3` for cloud APIs        |
 | NET RATE          | RX/TX deltas from `/proc/net/dev` (Windows: psutil) |
 | DISK /            | `shutil.disk_usage("C:\\")` / `shutil.disk_usage("/")` |
-| AI CORE panel     | provider, model, kernel, safety, disk, context turns
+| AI CORE panel     | provider, model, kernel, safety, disk, context turns + **MODEL LIST** dropdown (hot-swap any installed Ollama model) |
 
 The HUD runs the **real Orion agent loop** — your typed or spoken input goes
 through `orion.llm` → JSON action (`parse_action`) → `orion.executor`, with
