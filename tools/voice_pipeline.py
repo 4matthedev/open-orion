@@ -35,6 +35,8 @@ from pathlib import Path
 
 import httpx
 
+from orion.platform import is_windows, piper_voices_dir
+
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_MODEL = "qwen3.5:9b"
 REF_AUDIO = Path(__file__).resolve().parents[1] / "orion_raw.mp3"
@@ -189,12 +191,13 @@ class PiperEngine:
 
     @staticmethod
     def _in_venv_piper() -> str | None:
-        cand = Path(sys.prefix) / "bin" / "piper"
+        bindir = "Scripts" if is_windows() else "bin"
+        cand = Path(sys.prefix) / bindir / "piper"
         return str(cand) if cand.exists() else None
 
     @staticmethod
     def _find_voice() -> Path | None:
-        root = Path.home() / ".local/share/piper_voices"
+        root = piper_voices_dir()
         pref = ("en_US/ryan/medium/en_US-ryan-medium.onnx", "en_US/lessac/medium/en_US-lessac-medium.onnx")
         for rel in pref:
             cand = root / rel

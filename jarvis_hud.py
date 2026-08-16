@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import platform as platform_mod
 import queue
 import sys
 import threading
@@ -995,7 +996,7 @@ class HUD(tk.Tk):
             text="LOCAL" if self.provider.name == "ollama" else "TLS-1.3")
         self.diag["PROVIDER"].config(text=self.provider.name.upper())
         self.diag["MODEL"].config(text=getattr(self.provider, "model", "-"))
-        self.diag["KERNEL"].config(text=os.uname().release[:24])
+        self.diag["KERNEL"].config(text=platform_mod.uname().release[:24])
         self.diag["SAFETY"].config(
             text="DRY-RUN" if self.settings.dry_run else "GUARDED",
             fg=WARN if self.settings.dry_run else OK)

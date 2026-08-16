@@ -8,6 +8,7 @@ import os
 import platform
 
 from .config import AppSettings
+from .platform import is_windows, shell_name
 
 try:
     from . import __version__
@@ -17,9 +18,18 @@ except ImportError:  # pragma: no cover - imported standalone
 
 def system_prompt(settings: AppSettings, memory: str = "") -> str:
     env = _environment()
+    shell = shell_name()
+    shell_desc = {
+        "powershell": (
+            "PowerShell. Windows-style paths, `Get-ChildItem`, `Copy-Item`, "
+            "`Remove-Item`, etc. — never bash syntax."
+        ),
+        "bash": "bash",
+    }[shell]
     memory_section = ("\n\n" + memory) if memory else ""
+    os_label = "Windows" if is_windows() else "Linux"
     return f"""
-You are **Orion** (v{__version__}), a respectful, courteous, and dependable personal AI assistant running in a terminal on the user's Linux machine. You serve the user with genuine respect and humility, communicate clearly and politely, get things done efficiently, and always keep the user's goals, comfort, and trust front and center.
+You are **Orion** (v{__version__}), a respectful, courteous, and dependable personal AI assistant running in a terminal on the user's {os_label} machine. You serve the user with genuine respect and humility, communicate clearly and politely, get things done efficiently, and always keep the user's goals, comfort, and trust front and center.
 
 ---
 
@@ -59,7 +69,7 @@ outside the JSON. Use this exact schema:
 
 {{
   "action": "run" | "read" | "ls" | "screenshot" | "remember" | "ask" | "done",
-  "command": "<bash code, only when action=run>",
+  "command": "<{shell} code, only when action=run>",
   "path": "<absolute path, only when action=read or ls, or a grim region for screenshot>",
   "message": "<text, only when action=ask/done/remember>",
   "reasoning": "<one short sentence of internal reasoning>",
@@ -69,14 +79,17 @@ outside the JSON. Use this exact schema:
 }}
 
 == Actions ==
-- "run": execute `command` through bash. This is your primary tool.
+- "run": execute `command` through {shell}. This is your primary tool.
+  ({shell_desc})
 - "read": return the contents of `path` (files only).
 - "ls": list the directory at `path`.
-- "screenshot": capture the user's screen (Wayland: grim; X11: import). Leave
-  `path` empty for the whole screen, or provide a region like `1920x1080+0+0`.
-  Use this whenever the user asks you to look at something visual. If the
-  active model supports vision, the captured image is attached to you for
-  analysis; otherwise report where the screenshot was saved.
+- "screenshot": capture the user's screen. On Windows a PowerShell
+  System.Drawing grab is used; on Linux Wayland uses grim and X11 uses
+  ImageMagick's import. Leave `path` empty for the whole screen, or provide a
+  region like `1920x1080+0+0`. Use this whenever the user asks you to look at
+  something visual. If the active model supports vision, the captured image is
+  attached to you for analysis; otherwise report where the screenshot was
+  saved.
 - "remember": permanently save the text in `message` to Orion's long-term
   memory (survives restarts). Use when the user says "remember ..." or states
   a durable preference.
@@ -101,6 +114,7 @@ def _environment() -> str:
         distro = platform.freedesktop_os_release().get("PRETTY_NAME", "unknown")
     except Exception:  # noqa: BLE001 - distro lookup is best-effort
         distro = "unknown"
+    shell = os.environ.get("SHELL") or os.environ.get("COMSPEC") or shell_name()
     return "\n".join(
         [
             f"hostname: {info.node}",
@@ -108,7 +122,7 @@ def _environment() -> str:
             f"arch:     {info.machine}",
             f"distro:   {distro}",
             f"user:     {getpass.getuser()}",
-            f"shell:    {os.environ.get('SHELL', 'unknown')}",
+            f"shell:    {shell}",
             f"cwd:      {os.getcwd()}",
             f"time:     {dt.datetime.now().strftime('%Y-%m-%d %H:%M %Z')}",
         ]

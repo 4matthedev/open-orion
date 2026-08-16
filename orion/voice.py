@@ -23,6 +23,7 @@ import wave
 from pathlib import Path
 
 from .config import AppSettings
+from .platform import is_windows, kokoro_dir, piper_voices_dir
 
 _TMP = Path(tempfile.gettempdir())
 
@@ -45,6 +46,12 @@ class Voice:
         self._xtts = None
         self._kokoro = None
         self._kokoro_lock = threading.Lock()
+        if is_windows():
+            raise VoiceError(
+                "voice mode is currently Linux-only (needs PulseAudio/PipeWire "
+                "tools: parec, paplay, pactl). Run Open Orion under WSL or on a "
+                "Linux machine for talk mode."
+            )
         self._tts_model = self._resolve_tts_model()
         self._validate_tools()
         self._preload_tts()
@@ -68,13 +75,14 @@ class Voice:
             model, voices = self._kokoro_paths()
             if not model.exists() or not voices.exists():
                 raise VoiceError(
-                    "Kokoro model files missing; download them into ~/.local/share/kokoro/:\n"
-                    "  curl -L -o ~/.local/share/kokoro/kokoro-v1.0.onnx "
-                    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/"
-                    "model-files-v1.0/kokoro-v1.0.onnx\n"
-                    "  curl -L -o ~/.local/share/kokoro/voices-v1.0.bin "
-                    "https://github.com/thewh1teagle/kokoro-onnx/releases/download/"
-                    "model-files-v1.0/voices-v1.0.bin"
+                    "Kokoro model files missing; download them into %s/:\n"
+                    "  curl -L -o %s/kokoro-v1.0.onnx "
+                    "https://github.com/thewh1teagle/kokoro-onnx/releases/"
+                    "download/model-files-v1.0/kokoro-v1.0.onnx\n"
+                    "  curl -L -o %s/voices-v1.0.bin "
+                    "https://github.com/thewh1teagle/kokoro-onnx/releases/"
+                    "download/model-files-v1.0/voices-v1.0.bin"
+                    % (kokoro_dir(), kokoro_dir(), kokoro_dir())
                 )
             try:
                 import kokoro_onnx  # noqa: PLC0415 - lazy, heavy import
@@ -96,7 +104,7 @@ class Voice:
                 ) from exc
 
     def _kokoro_paths(self) -> tuple[Path, Path]:
-        default_dir = Path.home() / ".local/share/kokoro"
+        default_dir = kokoro_dir()
         model = Path(self.settings.tts_kokoro_model or default_dir / "kokoro-v1.0.onnx")
         voices = Path(self.settings.tts_kokoro_voices or default_dir / "voices-v1.0.bin")
         return model, voices
@@ -105,7 +113,8 @@ class Voice:
     def _piper_bin() -> str | None:
         if shutil.which("piper"):
             return shutil.which("piper")
-        candidate = Path(sys.prefix) / "bin" / "piper"
+        bindir = "Scripts" if is_windows() else "bin"
+        candidate = Path(sys.prefix) / bindir / "piper"
         return str(candidate) if candidate.exists() else None
 
     def _resolve_tts_model(self) -> str | None:
@@ -117,7 +126,7 @@ class Voice:
             "en/en_GB/graham/medium/en_GB-graham-medium.onnx",
             "en/en_US/danny/low/en_US-danny-low.onnx",
         )
-        root = Path.home() / ".local/share/piper_voices"
+        root = piper_voices_dir()
         for rel in preferred:
             candidate = root / rel
             if candidate.exists():

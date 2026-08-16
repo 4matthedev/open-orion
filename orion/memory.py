@@ -11,13 +11,15 @@ import json
 import threading
 from pathlib import Path
 
+from .platform import data_dir
+
 
 class Memory:
     """A minimal, thread-safe persistent note store."""
 
     def __init__(self, path: Path | None = None) -> None:
         if path is None:
-            path = Path.home() / ".local/share/open-orion/memory.json"
+            path = data_dir() / "memory.json"
         self.path = path
         self._lock = threading.Lock()
         self._notes: list[dict] = []

@@ -63,6 +63,19 @@ _FORK_BOMB = re.compile(r"\{\s*:\s*\|\s*:\s*&\s*\}")
 _CURL_SUDO_SH = re.compile(
     r"\b(?:curl|wget)\b[^\n|;]*\|\s*\bsudo\b"
 )
+# Windows: delete the root of a drive tree (-Recurse, /s, -rf … + drive root).
+_REMOVES_ROOT_WIN = re.compile(
+    r"\b(?:Remove-Item|rm|rmdir|rd|del|erase)\b[^\n;]*"
+    r"(?:-Recurse\b|-r\b|/s\b|--recursive|-[a-z]*rf\b|-Force\b)"
+    r"[^\n;]*[A-Za-z]:[\\/]?(?:\s|\*|\.{3}|$)"
+)
+# Windows: format a whole volume.
+_FORMAT_WIN = re.compile(r"\bformat(?:\.com)?\s+[A-Za-z]:")
+# Windows: download-and-execute straight from the web (mirror of curl | sudo sh).
+_CURL_IEX = re.compile(
+    r"\b(?:curl|wget|iwr|Invoke-WebRequest|Invoke-RestMethod)\b[^\n|;]*"
+    r"\|\s*\b(?:iex|Invoke-Expression|sh|bash)\b"
+)
 _CRITICAL_FILE = re.compile(
     r"(?:>>?|\btouch\b|\btruncate\b|: >|>)\s*"
     r"(?:[^;|]*?/)?/etc/(?:passwd|shadow|sudoers|ssh/authorized_keys)"
@@ -96,11 +109,42 @@ _PACKAGE_DELETE = re.compile(
 )
 _SCHED_OVERWRITE = re.compile(r"\bcrontab\s+-r\b|\batrm\b")
 
+# -- Windows-specific risky patterns -------------------------------------
+_WIN_RM = re.compile(r"\b(?:Remove-Item|Remove-ChildItem|del|erase|rmdir|rd\b)\b")
+_WIN_SERVICE = re.compile(
+    r"\b(?:Stop-Service|Restart-Service|Set-Service|Disable-Service|"
+    r"Remove-Service|Restart-Computer|Stop-Computer)\b"
+)
+_WIN_KILL = re.compile(r"\b(?:Stop-Process|taskkill)\b")
+_WIN_REGISTRY = re.compile(
+    r"\b(?:Set-ItemProperty|Remove-ItemProperty|reg\s+add|reg\s+delete|Set-Item)\b"
+)
+_WIN_POLICY = re.compile(
+    r"\b(?:Set-ExecutionPolicy|Set-NetFirewallRule|New-NetFirewallRule|"
+    r"Remove-NetFirewallRule|netsh)\b"
+)
+_WIN_USERADMIN = re.compile(
+    r"\b(?:net\s+user|net\s+localgroup|New-LocalUser|Set-LocalUser|"
+    r"Remove-LocalUser|Set-LocalGroup|Set-LocalGroupMember)\b"
+)
+_WIN_SCHED = re.compile(
+    r"\b(?:schtasks|New-ScheduledTask|Register-ScheduledTask|"
+    r"Unregister-ScheduledTask|Enable-ScheduledTask|Disable-ScheduledTask)\b"
+)
+_WIN_REMOTING = re.compile(r"\b(?:Enable-PSRemoting|Enter-PSSession|Invoke-Command)\b")
+_WIN_DISK = re.compile(r"\b(?:diskpart|Clear-Disk|Initialize-Disk|format(?:\.com)?)\b")
+_WIN_PKG_DELETE = re.compile(
+    r"\b(?:winget\s+(?:uninstall|remove)|choco\s+uninstall|scoop\s+uninstall)\b"
+)
+
 _FORBIDDEN_CHECKS: tuple[tuple[str, re.Pattern, str], ...] = (
     ("removes_root", _REMOVES_ROOT, "recursive force-delete of the root filesystem"),
+    ("removes_root_win", _REMOVES_ROOT_WIN, "recursive delete of a whole drive"),
     ("block_write", _BLOCK_WRITE, "direct write to a block device"),
+    ("format_drive_win", _FORMAT_WIN, "formatting an entire drive"),
     ("fork_bomb", _FORK_BOMB, "fork bomb pattern"),
     ("curl_sudo_sh", _CURL_SUDO_SH, "piping a remote download straight into sudo"),
+    ("curl_iex", _CURL_IEX, "piping a remote download straight into the shell"),
     ("critical_file", _CRITICAL_FILE, "overwriting a critical system file"),
     ("chmod_critical", _CHMOD_CRITICAL, "changing permissions on a critical system file"),
 )
@@ -108,18 +152,28 @@ _FORBIDDEN_CHECKS: tuple[tuple[str, re.Pattern, str], ...] = (
 _RISKY_CHECKS: tuple[tuple[str, re.Pattern, str], ...] = (
     ("sudo", _SUDO, "command runs with elevated privileges"),
     ("rm", _RM, "deletes files"),
+    ("del", _WIN_RM, "deletes files (Remove-Item/del/rmdir)"),
     ("shutdown", _SHUTDOWN, "halts, reboots, or powers off the machine"),
     ("service", _SERVICE_STOP, "stops, disables, or restarts a service"),
+    ("service_win", _WIN_SERVICE, "stops, restarts, or disables a service"),
     ("kill", _KILL, "terminates processes"),
+    ("kill_win", _WIN_KILL, "terminates processes (Stop-Process/taskkill)"),
     ("redirect", _REDIRECT, "redirects output to a file (may overwrite)"),
     ("chmod_chown", _CHMOD_CHOWN, "changes file permissions or ownership"),
     ("dd_mkfs", _DD_MKFS, "low-level disk/filesystem operation"),
+    ("disk_win", _WIN_DISK, "low-level disk/filesystem operation"),
     ("mount", _MOUNT, "mounts or unmounts filesystems"),
     ("useradmin", _USERADMIN, "modifies users or passwords"),
+    ("useradmin_win", _WIN_USERADMIN, "modifies users or groups"),
+    ("registry", _WIN_REGISTRY, "changes registry keys or item properties"),
+    ("policy", _WIN_POLICY, "changes execution policy, firewall, or network rules"),
     ("firewall", _FIREWALL, "changes firewall or network rules"),
     ("cron", _CRON, "modifies scheduled tasks"),
+    ("scheduled_win", _WIN_SCHED, "modifies Windows scheduled tasks"),
+    ("remoting", _WIN_REMOTING, "enables remoting or runs commands on remote machines"),
     ("force_push", _FORCE_PUSH, "force-pushes to a git remote"),
     ("package", _PACKAGE_DELETE, "removes or purges installed packages"),
+    ("package_win", _WIN_PKG_DELETE, "removes or purges installed packages"),
     ("cron_replace", _SCHED_OVERWRITE, "edits or clears the crontab"),
 )
 

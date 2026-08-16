@@ -36,6 +36,7 @@ from .themes import (
     themes_list,
 )
 from .voice import Voice, VoiceError
+from .platform import is_windows
 
 # --------------------------------------------------------------------------
 # Theme — palette resolved at startup from --theme / ORION_THEME / .env
@@ -75,8 +76,35 @@ def apply_theme(cli: str | None = None, configured: str | None = None,
 
 apply_theme()
 
-MONO      = "DejaVu Sans Mono"
-SANS      = "DejaVu Sans"
+MONO_FONTS = ("Consolas", "Courier New", "DejaVu Sans Mono", "Liberation Mono",
+              "Courier", "monospace")
+SANS_FONTS = ("Segoe UI", "Tahoma", "DejaVu Sans", "Liberation Sans",
+              "Calibri", "Arial")
+
+
+def _pick_family(candidates: tuple[str, ...], fallback: str) -> str:
+    """Pick the first installed font family.
+
+    ``tkfont.families()`` needs a Tk root, which may not exist yet at import
+    time; in that case fall back to a sensible per-OS default (tkinter then
+    substitutes an actual family when the window is built).
+    """
+    try:
+        available = set(tkfont.families())
+    except (tk.TclError, RuntimeError):
+        return fallback
+    for name in candidates:
+        if name in available:
+            return name
+    return fallback
+
+
+if is_windows():
+    MONO = _pick_family(MONO_FONTS, "Consolas")
+    SANS = _pick_family(SANS_FONTS, "Segoe UI")
+else:
+    MONO = _pick_family(MONO_FONTS, "DejaVu Sans Mono")
+    SANS = _pick_family(SANS_FONTS, "DejaVu Sans")
 
 GESTURE = (
     "Open Orion is running. All systems nominal. How may I assist you, sir?"

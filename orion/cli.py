@@ -17,6 +17,7 @@ from .executor import ExecResult, Executor
 from .llm import LLMError, get_provider
 from .memory import Memory
 from .models import ActionRequest
+from .platform import shell_name
 from .voice import Voice, VoiceError
 
 HELP_TEXT = """\
@@ -52,6 +53,7 @@ class CLIHost:
     """Renders agent events (and asks for confirmation) in the terminal."""
 
     _LOGGED = {"reason": "dim", "ok": "green", "warn": "yellow", "err": "red"}
+    _SH_LEXER = shell_name()
 
     def __init__(self, console: Console, talk: TalkState) -> None:
         self.console = console
@@ -74,7 +76,7 @@ class CLIHost:
     def show_command(self, command: str, explanation: str) -> None:
         self.console.print(Panel(f"[bold]{explanation}[/bold]",
                                  title="Orion", border_style="cyan"))
-        self.console.print(Syntax(command, "bash"))
+        self.console.print(Syntax(command, self._SH_LEXER))
 
     def show_output(self, title: str, body: str) -> None:
         self.console.print(Panel(body, title=title, border_style="dim"))
@@ -101,7 +103,7 @@ class CLIHost:
     def confirm(self, command: str, level: str, reason: str) -> bool:
         self.console.print(
             f"[yellow]Risk ({level.upper()}): {reason}[/yellow]")
-        self.console.print(Syntax(command, "bash"))
+        self.console.print(Syntax(command, self._SH_LEXER))
         default = "n" if level == "risky" else "y"
         answer = Prompt.ask("Run this command?",
                             choices=["y", "n"], default=default)

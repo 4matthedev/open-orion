@@ -15,6 +15,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .platform import data_dir
+
 #: Every color role the UIs understand. Custom themes may override any subset.
 THEME_ROLES = (
     "bg", "bg_panel", "bg_deep", "bg_edge", "grid",
@@ -181,7 +183,7 @@ def _load_custom_theme(path: Path) -> Theme:
 # ---------------------------------------------------------------------------
 
 def _ui_state_path() -> Path:
-    return Path.home() / ".local/share/open-orion" / "ui.json"
+    return data_dir() / "ui.json"
 
 
 def read_saved_theme() -> str:

@@ -1,7 +1,8 @@
 # Open Orion
 
-Autonomous terminal-based AI agent (JARVIS-style) for Linux. Speaks natural language,
-translates it into safe Bash commands, and manages your machine — with a guarded,
+Autonomous terminal-based AI agent (JARVIS-style) for **Linux and Windows**.
+Speaks natural language, translates it into safe shell commands (Bash on
+Linux, PowerShell on Windows), and manages your machine — with a guarded,
 confirmation-based execution flow.
 
 ## Architecture
@@ -14,16 +15,18 @@ main.py                      CLI entry point (python -m orion also works)
 │   ├── agent.py             shared control-loop + action dispatch (Host protocol)
 │   ├── config.py            pydantic-settings: providers, models, safety toggles
 │   ├── security.py          static risk classifier + hard-block/risky patterns
-│   ├── executor.py          sandboxed shell runner + read/list file tools
+│   ├── executor.py          sandboxed shell runner (bash / PowerShell) + file tools
 │   ├── llm.py               Ollama (local) and LiteLLM (OpenAI/Anthropic) providers
 │   ├── models.py            JSON action contract + parser
 │   ├── prompt.py            system prompt + environment fingerprint
 │   ├── context.py           bounded conversation history (ring buffer)
 │   ├── memory.py            persistent note store (survives restarts)
-│   ├── system.py            real /proc telemetry shared by the desktop UIs
+│   ├── system.py            real telemetry shared by the desktop UIs
 │   ├── themes.py            shared color palettes + saved UI prefs
+│   ├── platform.py          cross-platform helpers (OS, data dirs, shell)
 │   └── voice.py             local STT (faster-whisper) + TTS (piper/Kokoro/XTTS)
 ├── jarvis_hud.py            standalone futuristic HUD (tkinter)
+├── install.ps1              Windows installer
 ├── tools/voice_pipeline.py  streaming voice-cloning tool (F5-TTS)
 └── tests/                   pytest suite for the core modules
 ```
@@ -31,9 +34,21 @@ main.py                      CLI entry point (python -m orion also works)
 The agent is a **control loop**: the LLM emits a single JSON action
 (`run | read | ls | screenshot | remember | ask | done`), a local static guard
 classifies the command, the user confirms risky actions, the command executes,
-and the output is fed back into context for the next step. The CLI and both
+and the output is fed back into context for the next step. On Linux commands
+run through `bash`; on Windows they run through `powershell.exe`, and the
+system prompt tells the model which shell it is talking to. The CLI and both
 desktop UIs share one dispatch implementation (`orion.agent`) so the safety/
 confirmation flow is identical everywhere.
+
+## Platforms
+
+| Feature              | Linux | Windows |
+|----------------------|-------|---------|
+| CLI agent            | ✔     | ✔       |
+| GUI / HUD (tkinter)  | ✔     | ✔ (a Python with Tk, e.g. from python.org) |
+| System telemetry     | ✔ `/proc` | ✔ psutil / ctypes |
+| Screenshots          | ✔ grim / import | ✔ PowerShell System.Drawing |
+| Talk mode (voice)    | ✔ (PulseAudio/PipeWire) | — graceful, disables itself |
 
 ## Quickstart
 
@@ -55,6 +70,25 @@ to `.env`. Prefer smaller variants to keep the install light:
 
 The GUI/HUD need tkinter (a system package): `sudo pacman -S tk` on Arch, or
 `sudo apt install python3-tk` on Debian/Ubuntu.
+
+### Windows install (PowerShell)
+
+```powershell
+.\install.ps1                # everything; or:
+.\install.ps1 -Core          # CLI core only
+.\install.ps1 -Api           # + cloud API backends
+.\install.ps1 -Voice         # + voice TTS/STT packages (talk mode still Linux-only)
+.\install.ps1 -VoicePipeline # + streaming voice-cloning tool
+
+.\orion.bat                  # CLI REPL
+.\orion-gui.bat              # JARVIS-style deck
+.\orion-hud.bat              # futuristic HUD
+```
+
+Use a Python build that bundles tkinter (the standard installer from
+python.org does). Generated commands run through PowerShell; point the broker at
+a local Ollama server or a cloud API exactly like on Linux. Windows data files
+(memory, theme prefs, screenshots) live under `%LOCALAPPDATA%\open-orion`.
 
 ### Manual install
 
@@ -244,6 +278,11 @@ pulses while the model works.
 
 ## Talk mode (voice)
 
+> **Windows note:** talk mode is Linux-only for now. The voice engine needs
+> PulseAudio/PipeWire (`parec`, `paplay`, `pactl`); on Windows it detects the
+> platform and disables itself with a clear message — the CLI, GUI, and HUD
+> keep working normally.
+
 Speak to Open Orion and have it speak back — fully local:
 
 ```bash
@@ -270,9 +309,10 @@ Config knobs: `ORION_VOICE_ENABLED`, `ORION_STT_MODEL`, `ORION_STT_DEVICE`,
 
 ## Notes
 
-- Commands run via `bash -c` as your current user — the agent inherits your permissions.
-- Inspect system state with read-only commands (`ps`, `df`, `journalctl`, `ls`, …); the
-  model prefers these unless a mutation is required.
+- Commands run via `bash -c` (Linux) or `powershell.exe -Command` (Windows) as
+  your current user — the agent inherits your permissions.
+- Inspect system state with read-only commands (`ps`, `df`, `Get-ChildItem`,
+  `journalctl`, `ls`, …); the model prefers these unless a mutation is required.
 
 ## Streaming voice-cloning pipeline
 

@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
-"""Open Orion — autonomous Linux shell agent. Entry point."""
+"""Open Orion — autonomous shell agent. Entry point."""
 
 import sys
 
 from orion.cli import main as cli_main
+from orion.platform import is_windows
+
+
+def _tk_hint(exc: Exception) -> str:
+    if is_windows():
+        return (
+            "Install the standard Python from python.org (bundles tkinter), or\n"
+            "run:  python -m pip install --upgrade pip\n"
+        )
+    return (
+        "Install it with:  sudo pacman -S tk\n"
+        "or run via the bundled GUI venv:  ./.venv-gui/bin/python main.py --gui"
+    )
 
 
 def main(argv=None) -> int:
@@ -17,8 +30,7 @@ def main(argv=None) -> int:
             print(
                 "open-orion: GUI needs tkinter, which this Python lacks:\n"
                 f"  {exc}\n"
-                "Install it with:  sudo pacman -S tk\n"
-                "or run via the bundled GUI venv:  ./.venv-gui/bin/python main.py --gui",
+                "%s" % _tk_hint(exc),
                 file=sys.stderr,
             )
             return 3
