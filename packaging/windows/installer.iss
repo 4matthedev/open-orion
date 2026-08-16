@@ -67,7 +67,7 @@ Name: "{autodesktop}\Open Orion";            Filename: "{app}\orion-hud.exe"; Wo
 ; 1) Bootstrap the local AI runtime BEFORE launching the app. Each entry only
 ;    runs when its task is checked AND the condition is true.
 Filename: "powershell.exe"; \
-    Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""& { $u='{#OllamaUrl}'; $f=$env:TEMP+'\OllamaSetup.exe'; if (Test-Path $f) { Remove-Item $f -Force }; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $f; $p=Start-Process -FilePath $f -ArgumentList '/SILENT' -Wait -PassThru; exit $p.ExitCode }"""; \
+    Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""$u='{#OllamaUrl}'; $f=Join-Path $env:TEMP 'OllamaSetup.exe'; if (Test-Path $f) {{ Remove-Item $f -Force }}; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri $u -OutFile $f; $p=Start-Process -FilePath $f -ArgumentList '/SILENT' -Wait -PassThru; exit $p.ExitCode"""; \
     StatusMsg: "Installing Ollama (local AI runtime)..."; \
     Flags: runhidden waituntilterminated; \
     Check: WizardIsTaskSelected('ollama') and not IsOllamaInstalled()
